@@ -202,6 +202,21 @@ export async function reconstructRecentPortfolioPerformance(
     bars = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
   }
 
+  const domainFills = (fillRows.results ?? []).map((row) => ({
+    symbol: row.symbol,
+    side: row.side,
+    quantityMicros: row.quantity_micros,
+    priceCents: row.price_cents,
+    feeCents: row.fee_cents,
+    createdAt: row.created_at,
+  }));
+
+  bars.push(...domainFills.map((fill) => ({
+    symbol: fill.symbol,
+    observedAt: fill.createdAt,
+    priceCents: fill.priceCents,
+    source: "FILL_PRICE_FALLBACK",
+  })));
   bars.push(...(quoteRows.results ?? []).map((quote) => ({
     symbol: quote.symbol,
     observedAt: quote.observed_at,
@@ -211,7 +226,7 @@ export async function reconstructRecentPortfolioPerformance(
 
   const reconstructed = reconstructPortfolioSnapshots({
     timestamps,
-    fills: (fillRows.results ?? []).map((row) => ({ symbol: row.symbol, side: row.side, quantityMicros: row.quantity_micros, priceCents: row.price_cents, feeCents: row.fee_cents, createdAt: row.created_at })),
+    fills: domainFills,
     cashEntries: (cashRows.results ?? []).map((row) => ({ deltaCents: row.delta_cents, createdAt: row.created_at })),
     bars,
   });

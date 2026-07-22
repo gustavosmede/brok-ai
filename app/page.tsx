@@ -80,7 +80,7 @@ function EquityChart({ points }: { points: DashboardState["snapshots"] }) {
       const height = rect.height;
       ctx.clearRect(0, 0, width, height);
 
-      const source = points.length ? points : [{ id: "empty", equity_cents: 10_000_000, cash_cents: 10_000_000, created_at: new Date().toISOString() }];
+      const source = points.length ? points : [{ id: "empty", equity_cents: 10_000_000, cash_cents: 10_000_000, created_at: new Date().toISOString(), source: "EMPTY", coverage_pct: 100 }];
       const values = source.map((point) => point.equity_cents);
       const times = source.map((point) => Date.parse(point.created_at));
       const firstTime = Math.min(...times);
@@ -143,7 +143,8 @@ function EquityChart({ points }: { points: DashboardState["snapshots"] }) {
       ctx.beginPath(); ctx.moveTo(left, baselineY); ctx.lineTo(width - right, baselineY); ctx.stroke();
       ctx.setLineDash([]);
 
-      const sourceSegments = splitTimeSeriesAtGaps(source);
+      const isReconstructedSeries = source.some((point) => point.source === "RECONSTRUCTED_24H" || point.source === "LIVE_NOW");
+      const sourceSegments = isReconstructedSeries ? [source] : splitTimeSeriesAtGaps(source);
       const coordsFor = (segment: typeof source) => segment.map((point) => {
         const index = source.indexOf(point);
         return { x: x(times[index], index), y: y(point.equity_cents) };
