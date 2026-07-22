@@ -4,7 +4,7 @@ Terminal local de paper trading com ordens simuladas, posições, risco e histó
 
 Criador principal: **Gustavo S. M.** (`gustavosmede`).
 
-> Para arquitetura, regras financeiras, integrações, APIs, limitações e instruções para agentes de IA, consulte o [Memorando técnico do Brok.ai](./BROKAI_TECHNICAL_MEMO.md). Para a visão de negócio, modelo multibroker, monetização e expansão global, consulte o [Memorando de negócio do Brok.ai](./BROKAI_BUSINESS_MEMO.md).
+> Para arquitetura, regras financeiras, integrações, APIs, limitações e instruções para agentes de IA, consulte o [Memorando técnico do Brok.ai](./BROKAI_TECHNICAL_MEMO.md).
 
 ## Aviso
 
