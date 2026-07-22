@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { assessNewsImpact, classifyNews, normalizeFinancialJuiceCalendar, normalizeFinancialJuiceNews } from "../lib/market-intelligence-normalize.ts";
 
-test("classifica geopolítica por título e labels", () => {
+test("classifies geopolitics by title and labels", () => {
   assert.equal(classifyNews("Ceasefire talks resume in Gaza"), "GEOPOLITICS");
   assert.equal(classifyNews("Apple reports quarterly earnings"), "MARKET");
 });
 
-test("normaliza notícia do FinancialJuice", () => {
+test("normalizes FinancialJuice news", () => {
   const item = normalizeFinancialJuiceNews({
     newsId: 42,
     datePublished: "2026-07-19T12:00:00Z",
@@ -22,7 +22,7 @@ test("normaliza notícia do FinancialJuice", () => {
   assert.deepEqual(item.labels, ["Energy", "Oil"]);
 });
 
-test("normaliza variações comuns do calendário", () => {
+test("normalizes common calendar variations", () => {
   const event = normalizeFinancialJuiceCalendar({
     eventId: "cpi-us",
     dateTime: 1784467800,
@@ -40,7 +40,7 @@ test("normaliza variações comuns do calendário", () => {
   assert.equal(event.forecast, "2.7%");
 });
 
-test("reserva alto impacto para sinais objetivos", () => {
+test("reserves high impact for objective signals", () => {
   assert.equal(assessNewsImpact({ title: "* Fed unexpectedly raises interest rate", source: "FINANCIALJUICE", category: "MARKET" }), "HIGH");
   assert.equal(assessNewsImpact({ title: "Apple opens a new store", source: "YAHOO", category: "MARKET" }), "LOW");
   assert.equal(assessNewsImpact({ title: "Apple cuts earnings guidance", source: "YAHOO", category: "MARKET", portfolioRelated: true }), "HIGH");

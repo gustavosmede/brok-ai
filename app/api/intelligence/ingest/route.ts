@@ -9,10 +9,10 @@ function apiKey(): string {
 export async function POST(request: Request) {
   const expected = apiKey();
   const authorization = request.headers.get("authorization") ?? "";
-  if (!expected || authorization !== `Bearer ${expected}`) return Response.json({ error: "Não autorizado" }, { status: 401 });
+  if (!expected || authorization !== `Bearer ${expected}`) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const payload = await request.json() as unknown;
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return Response.json({ error: "Payload inválido" }, { status: 400 });
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return Response.json({ error: "Invalid payload" }, { status: 400 });
     await ingestFinancialJuiceMessage(payload as Record<string, unknown>);
     return Response.json({ ok: true });
   } catch (error) {

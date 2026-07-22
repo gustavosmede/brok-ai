@@ -9,6 +9,6 @@ export async function POST(request: Request) {
     const state = await applyCorporateAction({ symbol: payload.symbol, actionType: payload.actionType, value: payload.value, effectiveDate: payload.effectiveDate });
     return Response.json({ state });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Não foi possível aplicar o evento" }, { status: 400 });
+    return Response.json({ error: error instanceof Error ? error.message : "Could not apply the event" }, { status: 400 });
   }
 }

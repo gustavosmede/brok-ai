@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 
 export function getDatabase(): D1Database {
   if (!env.DB) {
-    throw new Error("O banco local não está disponível. Reinicie o servidor de desenvolvimento.");
+    throw new Error("The local database is not available. Restart the development server.");
   }
   return env.DB;
 }

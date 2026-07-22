@@ -84,10 +84,10 @@ export function getUsEquityMarketStatus(date = new Date()): { isOpen: boolean; l
   const minutes = parts.hour * 60 + parts.minute;
   const withinRegularSession = minutes >= 9 * 60 + 30 && minutes < 16 * 60;
   const isOpen = !weekend && !holiday && withinRegularSession;
-  const reason = weekend ? "Fim de semana" : holiday ?? (withinRegularSession ? "Sessão regular NYSE/Nasdaq" : "Fora da sessão regular");
+  const reason = weekend ? "Weekend" : holiday ?? (withinRegularSession ? "NYSE/Nasdaq regular session" : "Outside regular session");
   return {
     isOpen,
-    label: isOpen ? "Mercado aberto" : "Mercado fechado",
+    label: isOpen ? "Market aberto" : "Market fechado",
     reason,
     newYorkTime: `${dateKey} ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")} ET`,
   };

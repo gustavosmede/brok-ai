@@ -1,314 +1,198 @@
-# Brok.ai — Memorando de visão, modelo de negócio e expansão global
+# Brok.ai Business Memo: Vision, Model, And Global Expansion
 
-**Versão:** 1.0  
-**Data de referência:** 19 de julho de 2026  
-**Estado atual:** MVP funcional de paper trading; nenhuma ordem real é enviada
+**Version:** 1.0
+**Reference date:** July 22, 2026
+**Current state:** functional paper-trading MVP; no real orders are sent
 
-## 1. Resumo executivo
+## 1. Vision
 
-Brok.ai pretende ser um **terminal inteligente global multibroker**, e não uma corretora. O usuário conecta uma conta que já possui em uma corretora ou exchange compatível. A Brok.ai interpreta a intenção em linguagem natural, resolve o ativo, calcula o impacto da ordem, apresenta um preview e, somente após confirmação explícita, transmite a ordem à API da instituição escolhida.
+Brok.ai is intended to become a global intelligent multibroker terminal, not a broker. The user connects an account they already hold at a supported broker or exchange. Brok.ai interprets the user's intent, resolves the asset, calculates the order impact, displays a preview, and only after explicit confirmation transmits the order to the selected institution's API.
 
-A corretora permanece responsável por cadastro, custódia, saldo, suitability, execução, liquidação e documentos oficiais. A Brok.ai atua como camada de software para comando, normalização, acompanhamento, risco e auditoria.
+The broker remains responsible for onboarding, KYC, custody, balance, suitability, execution, settlement, statements, and official records. Brok.ai acts as the software layer for command, normalization, monitoring, risk, and audit.
 
-> **Princípio central:** a Brok.ai não recebe depósitos, não mantém saldo, não custodia ativos e nunca solicita permissão de saque ou transferência.
+> **Core principle:** Brok.ai does not accept deposits, hold balances, custody assets, or request withdrawal/transfer permissions.
 
-## 2. Proposta de valor
+## 2. User Problem
 
-O usuário não deveria precisar aprender interfaces, símbolos e fluxos diferentes para cada instituição. A Brok.ai oferece uma experiência única para múltiplas corretoras e classes de ativos.
+Users should not need to learn different interfaces, symbols, and order flows for every institution. Brok.ai aims to provide one consistent operating layer across brokers and asset classes.
 
-Exemplos de solicitações:
+Example requests:
 
-- “Compre US$ 1.000 de Apple a mercado.”
-- “Abra uma posição short no S&P 500 com 1% do caixa.”
-- “Reduza minha posição em PayPal em 50%.”
-- “Compre 10% do caixa em petróleo e coloque stop de 5%.”
-- “Mostre o risco agregado das posições abertas em todas as corretoras.”
+- "Buy US$1,000 of Apple at market, with a 5% stop and a 12% target."
+- "Open a short position in the S&P 500 with 1% of available cash."
+- "Reduce my PayPal position by 50%."
+- "Buy 10% of cash in crude oil and add a 5% stop."
+- "Show aggregate risk across all open positions and brokers."
 
-O diferencial não é apenas utilizar um LLM. O valor defensável está em:
+The defensible value is not merely using an LLM. The durable value is reliable intent interpretation, correct instrument resolution, multibroker normalization, deterministic preview, mandatory human confirmation, risk controls, duplicate-order prevention, reconciliation with the broker of record, and auditable logs.
 
-- interpretação confiável da intenção;
-- resolução correta do instrumento;
-- normalização multibroker;
-- preview determinístico;
-- confirmação humana obrigatória;
-- controles de risco e prevenção de ordens duplicadas;
-- reconciliação com a fonte oficial da corretora;
-- trilha completa de auditoria.
+## 3. Role Split
 
-## 3. Papel da Brok.ai e da corretora
+Brok.ai should own:
 
-```mermaid
-flowchart LR
-    U["Usuário"] --> I["Brok.ai interpreta"]
-    I --> P["Preview e riscos"]
-    P --> C{"Usuário confirma?"}
-    C -- "Não" --> X["Nada é executado"]
-    C -- "Sim" --> A["Adapter da corretora"]
-    A --> B["Corretora executa e custodia"]
-    B --> R["Brok.ai reconcilia ordem e posição"]
-```
+- text, voice, and form interpretation;
+- conversion of intent into a canonical order model;
+- instrument resolution and market-data enrichment;
+- indicative price, size, cost, and portfolio-impact preview;
+- explicit confirmation capture;
+- routing to approved broker adapters;
+- monitoring of status, fills, positions, and risk;
+- audit records for original text, interpreted JSON, preview, confirmation, and broker response.
 
-### Responsabilidades da Brok.ai
+The broker should own:
 
-- interpretar texto, voz ou formulário;
-- transformar a intenção em uma ordem canônica;
-- identificar ticker, bolsa, moeda e instrumento;
-- mostrar preço indicativo, tamanho, custos e impacto no portfólio;
-- exigir confirmação explícita;
-- transmitir ou cancelar ordens autorizadas;
-- acompanhar status, fills, posições e risco;
-- registrar texto original, JSON interpretado, preview, confirmação e resposta da corretora.
+- onboarding, KYC, AML, and suitability;
+- account restrictions and permissions;
+- custody of cash and assets;
+- official market access;
+- routing, execution, and settlement;
+- confirmations, statements, and tax documents;
+- regulated obligations assigned to the intermediary.
 
-### Responsabilidades da corretora
+## 4. Connection Architecture
 
-- onboarding, KYC e prevenção à lavagem de dinheiro;
-- suitability e restrições da conta;
-- custódia de dinheiro e ativos;
-- disponibilidade de margem e aluguel;
-- roteamento, execução e liquidação;
-- confirmação oficial, extratos e documentos fiscais;
-- controles e obrigações regulatórias atribuídos ao intermediário.
+Two connection modes should exist.
 
-## 4. Arquitetura de conexão
+### OAuth Broker Connect
 
-Devem existir dois modos de conexão.
+The user is redirected to the broker, authenticates there, and grants specific scopes to Brok.ai. Brok.ai receives a revocable token without knowing the user's password.
 
-### 4.1 OAuth — modo preferencial
+Minimum scopes:
 
-O usuário é redirecionado para a própria corretora, autentica-se nela e concede escopos específicos à Brok.ai. A Brok.ai recebe um token revogável, sem conhecer a senha do usuário.
+- account read;
+- positions, orders, and fills read;
+- order creation and cancellation.
 
-Escopos mínimos:
+Never request withdrawal, transfer, or profile-change scopes.
 
-- leitura da conta;
-- leitura de posições, ordens e fills;
-- criação e cancelamento de ordens.
+### Local API-Key Agent
 
-Nunca solicitar escopos de saque, transferência ou alteração cadastral.
+When OAuth is unavailable, the key can remain encrypted on the user's device. A small local service receives a signed intent from Brok.ai, validates confirmation, and calls the broker API directly. This reduces centralized credential exposure, but scheduled orders and continuous monitoring depend on the user's device being online.
 
-### 4.2 Conector local — fallback para API keys
+Tokens, secrets, and API keys must never enter model prompts, model logs, or Ollama context. The model produces only structured intent. Deterministic code owns validation, calculation, authorization, and transmission.
 
-Quando não existir OAuth, a chave pode permanecer criptografada no dispositivo do usuário. Um pequeno serviço local recebe da Brok.ai uma intenção assinada, valida a confirmação e chama diretamente a API da corretora.
+## 5. Multibroker Standard
 
-Esse modo reduz a exposição centralizada de credenciais, mas depende de o dispositivo estar ligado para ordens agendadas e monitoramento contínuo.
+Every integration should implement a canonical adapter interface for account snapshots, quotes, order placement, cancellation, and fill reconciliation. Each adapter must declare supported countries, account types, asset classes, order types, long/short availability, fractional trading, extended-hours trading, OCO/native protections, market-data availability, rate limits, and authentication requirements.
 
-### 4.3 Isolamento do LLM
+The interface should block or explain unsupported operations instead of silently approximating them.
 
-Tokens, secrets e API keys nunca entram no prompt, no log do modelo ou no contexto do Ollama. O modelo produz somente uma intenção estruturada. Validação, cálculo financeiro, autorização e envio pertencem a código determinístico.
+## 6. Integration Strategy
 
-## 5. Padrão multibroker
+- Alpaca Paper and Alpaca OAuth are good first candidates for validating account sync and paper/live order routing.
+- Binance validates crypto precision, symbol normalization, and permission separation.
+- Interactive Brokers provides broad international coverage, but third-party access requires onboarding and compliance approval.
+- Regional brokers should be prioritized based on real user demand.
 
-Todas as integrações devem implementar uma interface canônica semelhante a:
+## 7. Global Strategy
 
-```ts
-interface BrokerAdapter {
-  connect(): Promise<Connection>;
-  getCapabilities(): Promise<BrokerCapabilities>;
-  getAccount(): Promise<Account>;
-  getPositions(): Promise<Position[]>;
-  getOrders(): Promise<Order[]>;
-  previewOrder(order: CanonicalOrder): Promise<OrderPreview>;
-  submitOrder(order: CanonicalOrder): Promise<Execution>;
-  cancelOrder(id: string): Promise<void>;
-}
-```
+Global does not mean enabling real orders everywhere at once. The architecture and brand can be global from day one, while execution should be enabled by broker, country of residence, regulated entity, asset class, account permission, and local rule set.
 
-Cada adapter deve declarar suas capacidades:
+Brok.ai should maintain an availability matrix and use feature flags. When a jurisdiction or broker is not enabled, users can still use paper trading, monitoring, and analysis without live order transmission.
 
-- países e contas atendidas;
-- ações, ETFs, opções, futuros, câmbio ou cripto;
-- ordens market, limit, stop, stop-limit, OCO e bracket;
-- posições long e short;
-- ativos fracionários;
-- negociação estendida;
-- moedas-base;
-- dados de mercado disponíveis;
-- limites, rate limits e requisitos de autenticação.
+Required global capabilities include internationalization, local market calendars, time zones, regional privacy policies, retention controls, broker-specific terms, and logged consent/confirmation versions.
 
-A interface deve bloquear ou explicar operações que a corretora não suporta, em vez de tentar aproximá-las silenciosamente.
+## 8. Regulatory Framing
 
-## 6. Estratégia de integrações
+Not custodying funds reduces operational risk, but it does not eliminate regulatory risk. Regulators evaluate the actual user flow, not only marketing language.
 
-### Etapa 1 — Alpaca Paper e Connect
+Brok.ai must avoid selecting assets for the user, giving personalized trade recommendations, trading discretionarily without specific confirmation, controlling funds or assets, or charging in ways that create broker-dealer risk without legal review.
 
-Primeiro candidato para validar OAuth, sincronização de conta e ordens em ambiente paper. O Alpaca Connect permite que fintechs e desenvolvedores conectem contas por OAuth. Ordens live dependem de registro, revisão e aprovação do aplicativo.
+Before live orders, Brok.ai should obtain jurisdiction-specific legal advice and validate the operating model contractually with each broker partner.
 
-### Etapa 2 — Binance Testnet e Spot
+## 9. Recommended Business Model
 
-Valida criptomoedas, símbolos Binance, precisão de quantidades e permissões distintas de leitura e negociação. Chaves devem possuir somente `TRADE` e `USER_DATA`, nunca saque.
+The basic product can remain free for users. Priority monetization should be B2B2C, paid by institutions that benefit from the interface and customer flow.
 
-### Etapa 3 — Interactive Brokers
+Potential revenue sources:
 
-Oferece ampla cobertura internacional. O acesso para aplicações terceirizadas exige processo de onboarding e aprovação de compliance, além de entidade e presença pública estabelecidas.
+1. broker-paid technology fee;
+2. white-label deployments for banks, exchanges, and financial institutions;
+3. managed cloud workspace for users who do not want to run locally;
+4. implementation and maintenance of private adapters;
+5. broker-approved revenue share within a regulated framework;
+6. enterprise audit, compliance, and risk modules.
 
-### Etapas posteriores
+Brok.ai should not start by charging users directly per order. That model can strengthen broker-dealer classification risk, creates an incentive to stimulate trading, and complicates international expansion.
 
-- Coinbase e Kraken;
-- corretoras europeias e asiáticas com OAuth oficial;
-- corretoras regionais escolhidas a partir da demanda real dos usuários;
-- provedores de embedded brokerage quando agregarem cobertura ou simplificarem compliance.
+If a transactional fee exists later, the preferred structure is for the partner broker to contract, disclose, and settle it, with clear preview disclosure and legal validation in the client's jurisdiction.
 
-## 7. Estratégia global
+## 10. Mandatory Controls For Real Money
 
-“Global” não significa habilitar ordens reais simultaneamente em todos os países. A arquitetura e a marca podem nascer globais, mas a execução deve ser liberada por combinação de:
+- mandatory preview before every new order;
+- explicit and specific confirmation;
+- raw user text and interpreted JSON shown before confirmation;
+- short preview expiration;
+- revalidation of price, cash, position, and broker capability;
+- idempotency key for each order;
+- no withdrawal or transfer permissions;
+- per-account risk limits;
+- periodic reconciliation with the broker;
+- immutable intent and broker-response logs;
+- clear delayed/unavailable data indicators;
+- explicit handling of partial fills, rejections, and closed markets;
+- no autonomous decision based only on LLM output.
 
-- país de residência;
-- corretora utilizada;
-- entidade regulada responsável;
-- classe de ativo;
-- bolsa e moeda;
-- permissões da conta;
-- regras locais de oferta, transmissão e execução.
+## 11. Roadmap
 
-A Brok.ai deve manter uma matriz de disponibilidade e usar feature flags. Quando uma integração não estiver habilitada em determinada jurisdição, o usuário continua podendo utilizar paper trading, acompanhamento e análise, sem transmissão de ordens.
+### Phase 1: Public Paper Trading
 
-Também serão necessários:
+Open-source the local MVP, document setup, collect usage feedback, and measure simulated-order activation, preview abandonment, and interpretation accuracy.
 
-- internacionalização de idioma, números e moedas;
-- calendários, feriados e fusos de cada mercado;
-- política de privacidade e retenção por região;
-- controles de proteção de dados;
-- termos específicos para cada integração;
-- registro das versões de termos, consentimentos e confirmações.
+### Phase 2: Multibroker Core
 
-## 8. Enquadramento regulatório
+Define the canonical adapter interface, broker-capability matrix, account/credential separation, audit model, and idempotency guarantees.
 
-Não custodiar recursos reduz muito o risco operacional, mas não elimina automaticamente o risco regulatório. Autoridades analisam o fluxo real do produto, e não apenas sua descrição comercial.
+### Phase 3: Paper Broker Integrations
 
-Pontos que aumentam o risco de enquadramento:
+Start with Alpaca Paper and Binance test flows, synchronize external orders/positions, and test reconciliation/network failures.
 
-- receber e transmitir ordens profissionalmente;
-- escolher o ativo ou recomendar uma transação personalizada;
-- operar discricionariamente sem confirmação específica;
-- receber remuneração vinculada ao valor, resultado ou quantidade de transações;
-- controlar credenciais, dinheiro ou ativos do usuário;
-- apresentar-se como corretora, consultor ou gestor.
+### Phase 4: Legal And Partnership Readiness
 
-Na União Europeia, o MiCA inclui “recepção e transmissão de ordens” entre os serviços de criptoativos. Nos Estados Unidos, remuneração baseada em transações é um forte indicador de atividade de broker-dealer. No Brasil, intermediação e execução de ordens de valores mobiliários são atividades típicas de intermediários autorizados.
+Create the legal entity, publish policies, obtain legal opinions in priority jurisdictions, and define contracts, responsibilities, and compensation.
 
-Por isso, antes de ordens reais, a Brok.ai deverá obter parecer jurídico específico para cada mercado prioritário e validar contratualmente o modelo com cada corretora.
+### Phase 5: Controlled Live Execution
 
-## 9. Modelo de negócio recomendado
+Enable a small user group, low order limits, strict logging, manual incident review, and expansion by broker/country only after evidence of safety.
 
-O produto básico pode permanecer gratuito para o usuário. A monetização prioritária deve ser **B2B2C**, com pagamento pelas instituições que se beneficiam da interface e do fluxo de clientes.
+## 12. Key Metrics
 
-Fontes possíveis de receita:
+- users connecting accounts;
+- users generating and confirming previews;
+- interpretation success rate;
+- manual corrections before confirmation;
+- rejected or unsupported intents;
+- time from intent to preview;
+- reconciliation errors;
+- weekly and monthly retention;
+- infrastructure and support cost per user;
+- security incidents or excessive permissions.
 
-1. licenciamento para corretoras;
-2. white-label para bancos, exchanges e instituições financeiras;
-3. fee de tecnologia por conta conectada ou ativa, pago pelo parceiro;
-4. implantação e manutenção de adapters privados;
-5. revenue share formalizado dentro da estrutura regulatória da corretora;
-6. API profissional para plataformas autorizadas.
+## 13. Positioning
 
-### Fee por ordem
+> **Brok.ai is the intelligent interface that connects investors to the brokers they already use, translating natural language into safe, verifiable, confirmed orders.**
 
-A Brok.ai não deve começar cobrando diretamente do usuário por ordem. Esse formato:
+Brok.ai does not compete for custody. It competes for the best decision, command, and monitoring experience across multiple financial institutions.
 
-- pode reforçar o enquadramento como intermediário;
-- cria incentivo econômico para estimular operações;
-- compete com a expectativa de corretagem zero;
-- complica a expansão internacional.
+## 14. Recorded Decisions
 
-Se futuramente existir uma tarifa transacional, a opção preferencial é que ela seja contratada, apresentada e liquidada pela corretora parceira, com divulgação clara no preview e validação jurídica na jurisdição do cliente.
+- Brok.ai does not intend to become a broker.
+- The user remains a direct client of the chosen broker.
+- The broker remains the official source of balance, position, and execution.
+- The product is built for global reach, with gradual jurisdiction-by-jurisdiction release.
+- OAuth is preferred; API keys must use minimum scope and ideally remain in a local connector.
+- Preview and confirmation remain mandatory.
+- Priority monetization is B2B2C, not a mandatory user subscription.
+- Direct per-order fees require partnership and regulatory analysis first.
 
-## 10. Controles obrigatórios para dinheiro real
+## 15. Initial Official References
 
-- preview obrigatório antes de toda nova ordem;
-- confirmação explícita e específica;
-- idempotency key para impedir duplicidade;
-- expiração curta do preview;
-- revalidação de preço, saldo, posição e capacidade da corretora;
-- limites por ordem, dia, ativo e classe;
-- bloqueio de saque e transferência;
-- kill switch global e por conta;
-- reconciliação periódica com a corretora;
-- registro imutável da intenção e da resposta;
-- indicação clara de dados atrasados ou indisponíveis;
-- tratamento explícito de partial fills, rejeições e mercados fechados;
-- nenhuma decisão autônoma baseada apenas na saída do LLM.
+- [Alpaca Broker API](https://alpaca.markets/broker)
+- [Alpaca OAuth](https://docs.alpaca.markets/docs/oauth-integrations)
+- [Binance Spot API](https://developers.binance.com/en/docs/products/spot/rest-api)
+- [Interactive Brokers API](https://www.interactivebrokers.com/en/trading/ib-api.php)
+- [SEC broker-dealer guide](https://www.sec.gov/about/reports-publications/investor-publications/guide-broker-dealer-registration)
+- [ESMA MiCA definitions](https://www.esma.europa.eu/publications-and-data/interactive-single-rulebook/mica/article-3-definitions)
+- [ESMA MiCA authorization](https://www.esma.europa.eu/publications-and-data/interactive-single-rulebook/mica/article-59-authorisation)
 
-## 11. Roadmap de produto e negócio
-
-### Fase 1 — Paper trading público
-
-- publicar uma demo segura;
-- medir ativação, retenção e ordens simuladas;
-- identificar brokers, países e ativos mais solicitados;
-- acompanhar taxa de interpretação correta e abandono no preview.
-
-### Fase 2 — Núcleo multibroker
-
-- consolidar `CanonicalOrder` e `BrokerAdapter`;
-- criar matriz de capabilities;
-- separar portfólios e credenciais por usuário;
-- implementar OAuth e cofre de tokens;
-- reforçar auditoria e idempotência.
-
-### Fase 3 — Integrações paper
-
-- Alpaca Paper;
-- Binance Testnet;
-- sincronização de posições e ordens externas;
-- testes de reconciliação e falhas de rede.
-
-### Fase 4 — Parceiros e compliance
-
-- constituir entidade jurídica;
-- publicar documentação e políticas;
-- iniciar onboarding com corretoras;
-- contratar parecer jurídico nas primeiras jurisdições;
-- definir contratos, responsabilidades e remuneração.
-
-### Fase 5 — Execução real controlada
-
-- grupo pequeno de usuários;
-- limites conservadores;
-- observabilidade e suporte operacional;
-- revisão manual de incidentes;
-- expansão por broker e país somente após evidência de segurança.
-
-## 12. Métricas essenciais
-
-- usuários que conectam uma conta;
-- usuários que geram e confirmam previews;
-- ordens interpretadas corretamente;
-- correções manuais antes da confirmação;
-- ordens rejeitadas, duplicadas ou reconciliadas incorretamente;
-- tempo entre intenção e preview;
-- ativos e corretoras mais solicitados;
-- retenção semanal e mensal;
-- receita por conta conectada;
-- custo de dados, infraestrutura e suporte por usuário;
-- incidentes de segurança ou permissões excessivas.
-
-## 13. Posicionamento
-
-> **Brok.ai é a interface inteligente que conecta investidores às corretoras que eles já utilizam, traduzindo linguagem natural em ordens seguras, verificáveis e confirmadas.**
-
-A Brok.ai não compete pela custódia. Ela compete pela melhor experiência de decisão, comando e acompanhamento entre múltiplas instituições.
-
-## 14. Decisões registradas
-
-- Brok.ai não pretende se tornar corretora.
-- O usuário continuará cliente direto da corretora escolhida.
-- A corretora será sempre a fonte oficial de saldo, posição e execução.
-- O produto será construído para alcance global, com liberação gradual por jurisdição.
-- OAuth será preferido; API keys utilizarão escopo mínimo e, idealmente, conector local.
-- Preview e confirmação permanecerão obrigatórios.
-- Monetização prioritária será B2B2C, não assinatura obrigatória do usuário.
-- Fee direto por ordem não será adotado antes de parceria e análise regulatória.
-
-## 15. Referências oficiais iniciais
-
-- [Alpaca Connect API](https://docs.alpaca.markets/us/docs/about-connect-api)
-- [Alpaca OAuth e Trading API](https://docs.alpaca.markets/us/docs/using-oauth2-and-trading-api)
-- [Interactive Brokers Web API](https://www.interactivebrokers.com/campus/ibkr-api-page/webapi-doc/)
-- [Binance Spot API — segurança e permissões](https://developers.binance.com/en/docs/products/spot/rest-api)
-- [CVM — Corretoras e distribuidoras](https://www.gov.br/cvm/pt-br/assuntos/regulados/consultas-por-participante/corretoras-e-distribuidoras)
-- [SEC — Guide to Broker-Dealer Registration](https://www.sec.gov/about/divisions-offices/division-trading-markets/division-trading-markets-compliance-guides/guide-broker-dealer-registration)
-- [ESMA — definições do MiCA](https://www.esma.europa.eu/publications-and-data/interactive-single-rulebook/mica/article-3-definitions)
-- [ESMA — autorização de prestadores de serviços de criptoativos](https://www.esma.europa.eu/publications-and-data/interactive-single-rulebook/mica/article-59-authorisation)
-
----
-
-Este memorando registra uma direção estratégica e técnica. Não constitui parecer jurídico, regulatório, fiscal ou recomendação de investimento.
+This memo records strategic and technical direction. It is not legal, regulatory, tax, or investment advice.

@@ -1,417 +1,178 @@
-# Brok.ai — Memorando técnico e guia para agentes de IA
+# Brok.ai Technical Memo And AI-Agent Guide
 
-**Versão do documento:** 1.0  
-**Data de referência:** 19 de julho de 2026  
-**Estado do produto:** MVP local funcional de paper trading  
-**Diretório do projeto:** `/Users/gustavomedeiros/Desktop/brok_ai`
+**Document version:** 1.0
+**Reference date:** July 22, 2026
+**Product state:** functional local paper-trading MVP
+**Project directory:** `/Users/gustavomedeiros/Desktop/brok_ai`
 
-## 1. Resumo executivo
+## 1. Executive Summary
 
-Brok.ai é um terminal local de **paper trading**. O usuário descreve uma operação em linguagem natural ou preenche um formulário; o sistema interpreta o pedido, resolve o ativo, obtém uma cotação, calcula um preview determinístico e exige confirmação explícita antes de registrar a ordem simulada.
+Brok.ai is a local-first paper trading terminal. The user describes an order in natural language, dictates it by voice, or fills a manual form. The system interprets the request, resolves the asset, fetches a quote, calculates a deterministic preview, and requires explicit confirmation before recording a simulated order.
 
-O produto acompanha caixa, posições long e short, ordens market/limit/stop, fills, P&L, exposição, risco, curva de patrimônio, histórico, notícias e calendário econômico. Todos os registros financeiros ficam no banco D1/SQLite local.
+The product tracks cash, long and short positions, market/limit/stop orders, fills, P&L, exposure, risk, equity curve, history, news, and economic-calendar events. Financial records are stored in the local D1/SQLite database.
 
-> **Invariante principal:** Brok.ai não é uma corretora e não envia ordens reais. O adapter Alpaca está desativado. Nenhuma alteração deve remover a etapa obrigatória de preview e confirmação.
+> **Main invariant:** Brok.ai is not a broker and does not send real orders in the current MVP. The Alpaca adapter is disabled. No change may remove the mandatory preview and confirmation step.
 
-## 2. O que o produto faz
+## 2. Product Capabilities
 
-- interpreta ordens em português com Ollama local;
-- usa um parser determinístico como fallback quando o Ollama falha ou retorna dados inválidos;
-- resolve empresas, tickers, criptomoedas e temas de investimento;
-- aceita símbolos Yahoo (`BTC-USD`) e Binance (`BTCUSDT`, `BTC-USDT`, `BTC/USDT`);
-- sugere ativos relacionados, normalmente ETFs, quando não existe um instrumento direto para um tema;
-- simula posições long e short;
-- aceita tamanho por unidades, valor em USD, percentual do caixa ou percentual da posição;
-- aceita ordens market, limit e stop;
-- cria stop-loss e take-profit vinculados em OCO;
-- permite reduzir 25%, reduzir 50% ou fechar uma posição;
-- registra ordens, fills, caixa, snapshots e auditoria;
-- calcula P&L realizado e não realizado, alocação, drawdown, concentração, risco nos stops, volatilidade, correlação, beta e cenários;
-- mostra detalhes individuais por posição, histórico de preço, performance, risco, execução e notícias;
-- oferece link para o gráfico correspondente no TradingView;
-- recebe ditado pelo microfone e transcreve localmente com Whisper;
-- combina FinancialJuice, GDELT, fontes oficiais, Yahoo e Nasdaq para notícias e calendário;
-- reconstrói períodos sem snapshots quando o Mac volta a funcionar e recupera os preços históricos.
+- interprets plain-English trading instructions with local Ollama;
+- uses a deterministic parser as fallback when Ollama is unavailable or returns invalid data;
+- resolves companies, tickers, cryptocurrencies, and investment themes;
+- accepts Yahoo symbols (`BTC-USD`) and Binance symbols (`BTCUSDT`, `BTC-USDT`, `BTC/USDT`);
+- suggests related instruments, usually ETFs, when a direct asset does not exist for a theme;
+- simulates long and short positions;
+- accepts sizing by shares, USD notional, percent of available cash, or percent of an existing position;
+- supports market, limit, and stop orders;
+- creates linked stop-loss and take-profit orders through OCO groups;
+- allows reducing 25%, reducing 50%, or closing a position;
+- records orders, fills, cash ledger entries, snapshots, and audit events;
+- calculates realized and unrealized P&L, allocation, drawdown, concentration, stop risk, volatility, correlation, beta, and scenarios;
+- shows per-position detail with price history, performance, risk, execution, and news;
+- links each position to its TradingView chart;
+- supports local microphone dictation through Whisper;
+- combines FinancialJuice, GDELT, official feeds, Yahoo, and Nasdaq for news and calendar data;
+- reconstructs missing snapshot periods after the Mac wakes up or reconnects to the internet.
 
-## 3. O que o produto não faz
+## 3. What The Product Does Not Do
 
-- não envia ordens a uma corretora;
-- não movimenta dinheiro real;
-- não oferece recomendação financeira;
-- não garante qualidade, disponibilidade ou tempo real das fontes gratuitas;
-- não mantém um servidor remoto obrigatório;
-- não usa o LLM para fazer cálculos financeiros ou decidir fills;
-- não possui autenticação multiusuário;
-- não aplica automaticamente dividendos e splits vindos de um feed: eventos corporativos são cadastrados manualmente;
-- não possui integração operacional com Alpaca. Existe somente um provider de cotação preparado e desativado na interface.
+- it does not send orders to a broker;
+- it does not move real money;
+- it does not provide investment advice;
+- it does not guarantee quality, availability, or real-time delivery from free data sources;
+- it does not require a remote server;
+- it does not use the LLM for financial calculations or fill decisions;
+- it does not provide multi-user authentication;
+- it does not automatically apply dividends and splits from a live corporate-actions feed;
+- it does not currently provide operational Alpaca execution.
 
-## 4. Arquitetura
+## 4. Architecture
 
 ```mermaid
 flowchart LR
-    U["Usuário: texto, voz ou formulário"] --> P["Ollama ou parser local"]
-    P --> R["Resolvedor de ativo"]
-    R --> B["Binance Spot: criptomoedas"]
-    R --> Y["Yahoo: busca, demais ativos e fallback"]
-    B --> V["Preview determinístico"]
+    U["User: text, voice, or form"] --> P["Ollama or local parser"]
+    P --> R["Asset resolver"]
+    R --> B["Binance Spot: crypto"]
+    R --> Y["Yahoo: search, other assets, fallback"]
+    B --> V["Deterministic preview"]
     Y --> V
-    V --> C{"Confirmação explícita?"}
-    C -- "Não" --> D["Draft expira"]
-    C -- "Sim" --> E["Motor paper"]
-    E --> O["Ordens, fills e OCO"]
-    O --> DB["D1/SQLite local"]
-    DB --> UI["Dashboard e analytics"]
+    V --> C{"Explicit confirmation?"}
+    C -- "No" --> D["Draft expires"]
+    C -- "Yes" --> E["Paper engine"]
+    E --> O["Orders, fills, and OCO"]
+    O --> DB["Local D1/SQLite"]
+    DB --> UI["Dashboard and analytics"]
     FJ["FinancialJuice"] --> DB
-    GD["GDELT + feeds oficiais"] --> DB
+    GD["GDELT + official feeds"] --> DB
     NQ["Nasdaq Calendar"] --> DB
     YN["Yahoo News"] --> UI
 ```
 
-### Camadas
-
-| Camada | Responsabilidade | Arquivos principais |
+| Layer | Responsibility | Main files |
 |---|---|---|
-| Interface | terminal, formulários, preview, gráficos e navegação | `app/page.tsx`, `app/globals.css`, `app/components/position-detail-drawer.tsx` |
-| API local | fronteira HTTP entre UI e domínio | `app/api/**/route.ts` |
-| Motor financeiro | validação, drafts, confirmação, fills, OCO, caixa e snapshots | `lib/trading-engine.ts`, `lib/finance.ts` |
-| Dados de mercado | resolução, normalização, cotações e candles | `lib/market-data.ts` |
-| Analytics | performance, benchmark, risco e alertas | `lib/analytics.ts` |
-| Posição detalhada | visão individual, notícias e gráfico | `lib/position-detail.ts`, `lib/position-detail-math.ts` |
-| Histórico offline | detecção de lacunas e reconstrução | `lib/portfolio-history.ts`, `lib/time-series.ts` |
-| Inteligência | FinancialJuice, GDELT, feeds oficiais, Yahoo News e Nasdaq Calendar | `lib/market-intelligence.ts`, `lib/market-intelligence-normalize.ts`, `lib/open-news-sources.ts`, `lib/nasdaq-economic-calendar.ts` |
-| Persistência | D1/SQLite local e inicialização idempotente | `db/index.ts`, `db/schema.ts`, `drizzle/` |
-| Runtime | Next/React sobre vinext, Vite e Cloudflare local | `vite.config.ts`, `worker/index.ts` |
-| Serviços macOS | servidor diário, coletor e Whisper | `scripts/` |
+| Interface | terminal UI, forms, previews, charts, navigation | `app/page.tsx`, `app/globals.css`, `app/components/position-detail-drawer.tsx` |
+| Local API | HTTP boundary between UI and domain logic | `app/api/**/route.ts` |
+| Financial engine | validation, drafts, confirmation, fills, OCO, cash, snapshots | `lib/trading-engine.ts`, `lib/finance.ts` |
+| Market data | symbol resolution, normalization, quotes, candles | `lib/market-data.ts` |
+| Analytics | performance, benchmark, risk, alerts | `lib/analytics.ts` |
+| Position detail | individual position view, news, chart links | `lib/position-detail.ts`, `lib/position-detail-math.ts` |
+| Offline history | gap detection and reconstruction | `lib/portfolio-history.ts`, `lib/time-series.ts` |
+| Intelligence | news and economic-calendar ingestion | `lib/market-intelligence.ts`, `lib/market-intelligence-normalize.ts`, `lib/open-news-sources.ts`, `lib/nasdaq-economic-calendar.ts` |
+| Persistence | local D1/SQLite and idempotent initialization | `db/index.ts`, `db/schema.ts`, `drizzle/` |
+| Runtime | Next/React on vinext, Vite, and local Cloudflare runtime | `vite.config.ts`, `worker/index.ts` |
+| macOS services | daily server, collector, and Whisper helpers | `scripts/` |
 
-## 5. Fluxo completo de uma ordem
+## 5. Order Lifecycle
 
-1. O usuário escreve, dita ou preenche uma intenção.
-2. `POST /api/chat` tenta obter JSON estruturado do Ollama em `127.0.0.1:11434`.
-3. Se o Ollama estiver indisponível ou inválido, `parseIntentWithRules()` assume o fluxo.
-4. O resolvedor consulta Binance/Yahoo e padroniza o símbolo.
-5. `POST /api/drafts` normaliza e valida a intenção.
-6. O motor busca cotação, posição e caixa; calcula quantidade, notional e proteções.
-7. Um draft `PENDING`, válido por cinco minutos, é persistido com seu preview.
-8. A interface mostra o preview. Nada foi executado até este ponto.
-9. `POST /api/drafts/confirm` recalcula o preview com dados atuais.
-10. Uma ordem market é recusada se a cotação mudou mais de 1% desde o preview.
-11. A ordem confirmada é criada e o motor verifica o fill.
-12. Market executa imediatamente na simulação; limit/stop ficam pendentes até o gatilho.
-13. Um fill altera o ledger de caixa e a posição derivada.
-14. Se houver stop-loss/take-profit, o motor cria ordens protetivas no mesmo grupo OCO.
-15. Quando uma proteção executa, a irmã OCO é cancelada.
-16. O motor reconcilia quantidades protetivas e registra um snapshot de patrimônio.
+1. The user types, dictates, or manually enters an intent.
+2. `POST /api/chat` tries to obtain structured JSON from local Ollama at `127.0.0.1:11434`.
+3. If Ollama is unavailable or invalid, `parseIntentWithRules()` handles the request.
+4. The resolver queries Binance/Yahoo and standardizes the symbol.
+5. `POST /api/drafts` normalizes and validates the intent.
+6. The engine fetches quote, position, and cash data, then calculates size, notional, and protections.
+7. A five-minute `PENDING` draft is persisted with its preview.
+8. The UI displays the preview. Nothing has executed yet.
+9. `POST /api/drafts/confirm` recalculates the preview with current data.
+10. A market order is rejected if the quote moved more than 1% since preview.
+11. A confirmed order is created and checked for fill.
+12. Market orders execute immediately in the simulator; limit/stop orders remain pending until triggered.
+13. A fill changes the cash ledger and the derived position.
+14. Stop-loss and take-profit protections are created as OCO siblings.
+15. When one OCO leg executes, the sibling is cancelled.
+16. The engine reconciles protective quantities and records an equity snapshot.
 
-### Ações aceitas
+## 6. LLM Safety Boundary
 
-| Ação | Semântica |
-|---|---|
-| `BUY` | abre ou aumenta uma posição long |
-| `SHORT` | abre ou aumenta uma posição short sintética |
-| `SELL` | vende uma posição long existente |
-| `REDUCE` | reduz long ou short por percentual da posição |
-| `CLOSE` | fecha 100% da posição |
+The default local model is `qwen3.5:9b` through Ollama. Temperature is zero, output follows a JSON schema, and required fields can be repaired with deterministic parser data.
 
-### Dimensionamento
+The LLM only translates natural language into structured intent. It never:
 
-- `SHARES`: unidades do ativo;
-- `NOTIONAL`: valor em USD;
-- `CASH_PCT`: percentual do caixa disponível;
-- `POSITION_PCT`: percentual da posição existente.
+- calculates quantity, cash, P&L, or fills;
+- decides whether an order can execute;
+- bypasses price, cash, or risk validation;
+- bypasses confirmation.
 
-Quantidades são representadas internamente em milionésimos de unidade (`quantity_micros`). Caixa e P&L permanecem contabilizados em centavos. Preços podem conter frações de centavo para suportar ativos como PEPE.
+After the LLM step, all fields go through deterministic normalization and engine validation.
 
-## 6. Ollama, parser e segurança do LLM
+## 7. Market Date
 
-O modelo padrão é `qwen3.5:9b`, acessado pela API local do Ollama. A temperatura é zero, a saída segue um JSON Schema e o servidor tenta reparar campos obrigatórios com os dados do parser local.
+Yahoo Finance is used for search, non-crypto assets, fallback quotes, historical bars, portfolio ticker news, and theme alternatives. Binance Spot is preferred for crypto assets with public USDT pairs and requires no API key.
 
-O LLM serve somente para tradução de linguagem natural. Ele **não**:
+Internal portfolio symbols use the Yahoo-style `BASE-USD` pattern even when the live quote comes from Binance. The actual source is recorded as `BINANCE_SPOT`. If Binance cannot serve the pair, the hybrid provider falls back to Yahoo.
 
-- consulta saldos diretamente;
-- calcula quantidade ou P&L;
-- decide se a ordem pode executar;
-- grava fills;
-- ignora a confirmação.
+`roundPriceCents()` preserves sub-cent precision. Do not replace it with `Math.round(price * 100)`, because that would turn low-priced crypto assets such as PEPE into zero.
 
-Depois do LLM, todos os campos passam pelo normalizador e pelo motor determinístico. Se o Ollama falhar, a interface identifica `RULES`/fallback local e o restante do fluxo continua.
+## 8. Persistence And Accounting
 
-## 7. Resolução de ativos e market data
+The `DB` binding is a local D1 database running through Miniflare/Cloudflare. `ensureDatabase()` creates missing structures and seeds the initial US$100,000 paper deposit once.
 
-### Yahoo Finance
+Accounting principles:
 
-É usado para:
+- cash is the sum of `cash_ledger`;
+- positions are reconstructed from immutable `fills`, not stored as mutable state;
+- average cost is weighted;
+- realized P&L is generated when a fill reduces or closes an existing position;
+- equity is cash plus net position value;
+- pending entry orders reserve cash;
+- shorts reserve synthetic collateral equal to the absolute position value;
+- current fills use zero fee and a default 5 bps simulated slippage.
 
-- busca por empresa, nome ou ticker;
-- ações, ETFs, fundos, índices, futuros, moedas e opções reconhecidos pelo Yahoo;
-- notícias específicas dos ativos da carteira;
-- fallback de cotação e histórico;
-- sugestão de alternativas relacionadas a temas.
+## 9. Offline Reconstruction
 
-O arquivo `lib/market-data.ts` contém aliases locais para nomes frequentes e temas como petróleo, ouro, urânio, prata e cobre.
+The system does not interpolate invented prices. When it detects a gap longer than 15 minutes, it:
 
-### Binance Spot
+1. reads the last valid snapshot before the gap;
+2. tries Binance for crypto and Yahoo for other assets;
+3. uses only the latest known price at each reconstructed timestamp;
+4. writes reconstructed rows as `MARKET_BACKFILL`;
+5. leaves a visible chart gap when coverage is insufficient.
 
-É a fonte preferencial para criptomoedas com par USDT. Usa endpoints públicos de market data e não precisa de chave.
+## 10. News And Calendar
 
-Normalização atual:
+FinancialJuice is the primary delayed stream when `FINANCIALJUICE_API_KEY` is configured. GDELT and official RSS/Atom feeds broaden market and geopolitical coverage. Yahoo provides ticker-specific fallback news for open positions. Nasdaq is used as a free economic-calendar fallback.
 
-```text
-PEPEUSDT   -> PEPE-USD
-PEPE-USDT  -> PEPE-USD
-PEPE/USDT  -> PEPE-USD
-PEPE-USD   -> PEPE-USD
-```
+Only placeholders such as `your_financialjuice_api_key_here` may appear in committed files. Real API keys belong only in `.env.local`, local runtime variables, or hosted secret stores.
 
-O símbolo interno da carteira segue o padrão Yahoo `BASE-USD`, mesmo quando a cotação vem da Binance. A fonte real fica registrada como `BINANCE_SPOT`. Se o par não existir, estiver limitado ou indisponível, o provider híbrido tenta Yahoo.
-
-### Precisão de preço
-
-`roundPriceCents()` preserva frações de centavo. Não substituir essa função por `Math.round(price * 100)`: isso transforma preços como `0.00000284` em zero e impede operações com criptoativos de baixo preço.
-
-### Cache e atualização
-
-- cotações com menos de dois minutos podem ser reutilizadas no preview;
-- a UI carrega estado e analytics a cada 30 segundos quando visível;
-- posições e ordens abertas têm cotação sincronizada a cada 60 segundos;
-- o daemon do macOS chama `/api/market` a cada cinco minutos;
-- candles de analytics ficam em cache por cinco minutos.
-
-## 8. Persistência e modelo financeiro
-
-O binding `DB` é um D1 local executado por Miniflare/Cloudflare. `ensureDatabase()` cria estruturas ausentes e deposita uma única vez o capital inicial paper de US$ 100.000.
-
-| Tabela | Conteúdo |
-|---|---|
-| `app_meta` | versão, saúde e timestamps dos coletores |
-| `cash_ledger` | depósitos, trades e dividendos; fonte do saldo de caixa |
-| `orders` | entradas, reduções, stops, alvos e corporate actions |
-| `fills` | execuções imutáveis usadas para derivar posições |
-| `quotes` | última cotação e metadados do ativo |
-| `command_drafts` | intenção, preview, validade e status da confirmação |
-| `portfolio_snapshots` | série de caixa, patrimônio e P&L |
-| `snapshot_metadata` | origem e cobertura de snapshots reconstruídos |
-| `price_bars` | candles usados no backfill |
-| `audit_events` | trilha das decisões e mutações do motor |
-| `corporate_actions` | dividendos e splits aplicados manualmente |
-| `market_news` | notícias FinancialJuice, GDELT e feeds oficiais persistidas |
-| `economic_events` | calendário FinancialJuice/Nasdaq |
-
-### Princípios contábeis
-
-- caixa é a soma de `cash_ledger`;
-- posições são reconstruídas a partir de `fills`, não armazenadas como estado mutável separado;
-- custo médio é ponderado;
-- vendas e coberturas reconhecem P&L realizado;
-- o patrimônio é caixa mais valor líquido das posições;
-- ordens de entrada pendentes reservam caixa;
-- shorts reservam colateral sintético equivalente ao valor absoluto da posição;
-- fills atuais têm taxa zero e slippage simulado padrão de 5 bps.
-
-## 9. Histórico, gráficos e retorno após período offline
-
-O sistema não interpola preços inventados. Ao detectar uma lacuna superior a 15 minutos:
-
-1. escolhe intervalo de candle conforme o tamanho da lacuna;
-2. tenta Binance para criptomoedas e Yahoo para os demais ativos;
-3. usa apenas o último preço conhecido no instante reconstruído, evitando look-ahead;
-4. só cria um snapshot quando todos os ativos necessários têm cobertura;
-5. limita a reconstrução visual a até 600 pontos;
-6. salva a origem como `MARKET_BACKFILL`;
-7. mantém uma interrupção no gráfico se não houver dados suficientes.
-
-## 10. Dashboard e analytics
-
-O dashboard contém:
-
-- patrimônio, caixa disponível, P&L e exposição;
-- excesso contra SPY, drawdown, risco nos stops, alertas e saúde dos dados;
-- curva de patrimônio com eixo temporal e lacunas explícitas;
-- alocação e concentração;
-- monitor de posições clicável;
-- ordens pendentes, fills, histórico e auditoria;
-- detalhes individuais com P&L diário, total, realizado, cenários, risco, ciclo da posição e histórico;
-- notícias e calendário econômico.
-
-O benchmark é `BTC-USD` quando toda a carteira é cripto; caso contrário é `SPY`. Analytics de risco dependem da cobertura histórica disponível e devem mostrar estado degradado quando os dados forem insuficientes.
-
-## 11. Notícias e calendário econômico
-
-### FinancialJuice
-
-- fonte principal de mercado, geopolítica e eventos macro;
-- stream gratuito com atraso informado de dez minutos;
-- coletor WebSocket separado em `scripts/financialjuice-collector.mjs`;
-- eventos são enviados ao endpoint autenticado `/api/intelligence/ingest`;
-- conteúdo recebido permanece no banco local;
-- notícias anteriores a 30 dias e eventos anteriores a sete dias são removidos.
-
-### Fallbacks
-
-- GDELT amplia a cobertura global e geopolítica, com atualização local limitada a uma tentativa a cada cinco minutos;
-- RSS/Atom do Fed, ECB, BLS e EIA e o feed recente do SEC EDGAR fornecem comunicados oficiais;
-- Yahoo fornece notícias por ticker para até 12 posições;
-- Nasdaq fornece um snapshot gratuito de sete dias do calendário;
-- o calendário Nasdaq é renovado no máximo a cada seis horas e tentativas falhas têm cooldown de 15 minutos;
-- notícias recebem impacto `HIGH`, `MEDIUM` ou `LOW` por regras determinísticas; `HIGH` usa faixa vermelha e filtro próprio no terminal;
-- falhas de inteligência nunca devem interromper carteira ou execução paper.
-
-Configure somente em `.env.local`:
-
-```bash
-FINANCIALJUICE_API_KEY=fj_replace_me
-```
-
-Nunca colocar a chave real em documentação, código, logs, commits ou respostas de agentes.
-
-## 12. Voz local
-
-O navegador captura até 30 segundos, converte o áudio para WAV e envia para `POST /api/transcribe`. A rota repassa o arquivo ao `whisper-server` local em `127.0.0.1:8080`.
-
-- modelo padrão: Whisper multilíngue `small`;
-- execução otimizada para Apple Silicon/Metal;
-- o áudio não é persistido pelo Brok.ai;
-- a transcrição volta como texto editável e entra no fluxo normal de preview.
-
-## 13. API local
-
-| Método e rota | Função |
-|---|---|
-| `GET /api/state` | estado consolidado da carteira |
-| `GET /api/analytics` | performance, risco, execução e alertas |
-| `POST /api/chat` | texto -> intenção estruturada e resolução do ativo |
-| `POST /api/drafts` | valida e cria preview temporário |
-| `POST /api/drafts/confirm` | confirma o draft, cria e processa a ordem |
-| `POST /api/market` | atualiza cotações, processa gatilhos e aceita cotações manuais |
-| `POST /api/orders/cancel` | cancela ordem aberta e seu grupo OCO quando aplicável |
-| `GET /api/position-detail?symbol=...` | detalhe de uma posição aberta |
-| `POST /api/corporate-actions` | aplica dividendo ou split manual |
-| `GET /api/intelligence` | notícias, calendário e saúde do stream |
-| `POST /api/intelligence/ingest` | ingest autenticado do coletor FinancialJuice |
-| `POST /api/transcribe` | áudio WAV -> texto via Whisper local |
-
-As APIs são locais e não constituem uma superfície autenticada para exposição pública. Não publicar o servidor diretamente na internet sem autenticação, autorização, rate limiting e revisão de segurança.
-
-## 14. Execução diária no Mac
-
-### Desenvolvimento/manual
+## 11. Daily Commands
 
 ```bash
 npm install
 npm run dev
-```
-
-Abrir `http://localhost:3000`.
-
-Quando FinancialJuice estiver configurado, iniciar em outro terminal:
-
-```bash
 npm run news:collect
-```
-
-### Serviço diário
-
-```bash
 npm run collector:install
-```
-
-O LaunchAgent inicia Brok.ai, FinancialJuice e sincronização periódica. Logs ficam em `.paperdesk/logs/`. O nome `.paperdesk` e os labels `com.paperdesk.*` são legados internos do nome anterior do produto.
-
-### Voz
-
-```bash
-npm run voice:install
-```
-
-### Remoção dos serviços
-
-```bash
 npm run collector:uninstall
+npm run voice:install
 npm run voice:uninstall
-```
-
-Esses comandos removem LaunchAgents, não a carteira local.
-
-## 15. Testes e critérios de conclusão
-
-Antes de entregar qualquer mudança:
-
-```bash
 npm run lint
 npm test
 ```
 
-`npm test` executa testes unitários, build completo e uma verificação do HTML renderizado. Cobertura relevante:
+## 12. Release Checklist
 
-- aritmética financeira e shorts;
-- parser e dimensionamento;
-- Binance/Yahoo e preços subcentavo;
-- calendário de mercado;
-- analytics e drawdown;
-- posição detalhada;
-- reconstrução offline e lacunas;
-- notícias/calendário;
-- áudio local;
-- presença do produto Brok.ai no build.
+Before publishing or pushing changes:
 
-Uma mudança no motor financeiro exige testes determinísticos. Não usar chamadas reais de rede na suíte; mockar `fetch` quando necessário.
-
-## 16. Regras para agentes de IA
-
-Ao trabalhar neste projeto:
-
-1. preservar o modo paper e a confirmação obrigatória;
-2. manter o LLM fora da contabilidade e da execução;
-3. não inserir nem revelar chaves da `.env.local`;
-4. reutilizar `normalizeMarketSymbol()` antes de persistir símbolos;
-5. preservar `roundPriceCents()` para preços subcentavo;
-6. manter Binance como preferência de cripto e Yahoo como fallback;
-7. não inventar preços para períodos offline;
-8. derivar posições de fills e caixa do ledger;
-9. preservar semântica OCO e reconciliação das proteções;
-10. manter notícias/calendário isolados de falhas do motor financeiro;
-11. fazer o menor diff correto e adicionar testes proporcionais ao risco;
-12. executar lint, testes e build antes de declarar conclusão;
-13. tratar dados externos como não confiáveis e validar formatos;
-14. não ativar Alpaca nem qualquer broker real sem uma decisão explícita de produto, credenciais segregadas e uma nova camada de segurança.
-
-## 17. Limitações e dívida técnica conhecida
-
-- o produto é single-user e local;
-- fontes Yahoo e Binance são APIs públicas sujeitas a mudança, limite e indisponibilidade;
-- preços subcentavo são números fracionários no campo semanticamente chamado `price_cents`; o SQLite local aceita esses valores, mas uma futura migração deve alinhar as declarações Drizzle/DDL para `REAL` ou adotar uma escala explícita;
-- taxas de negociação são zero no MVP;
-- slippage é fixo, não baseado em liquidez ou book;
-- shorts são sintéticos e não modelam borrow fee, margem dinâmica ou liquidação;
-- índices podem ser simulados diretamente, embora não sejam instrumentos negociáveis;
-- corporate actions são manuais;
-- o calendário de bolsa está focado na sessão regular de equities dos EUA;
-- FinancialJuice gratuito tem atraso e cobertura condicionada ao plano;
-- não existe autenticação para exposição em rede;
-- nomes internos `.paperdesk` ainda não foram migrados para `.brokai` para evitar quebrar serviços instalados.
-
-## 18. Pontos de extensão planejados
-
-- GDELT para ampliar geopolítica;
-- corporate actions e dividendos automáticos;
-- modelo de custos por classe de ativo;
-- calendário 24/7 e sessões por exchange/classe;
-- adapter Alpaca **paper** opcional, com configuração segregada e confirmação reforçada;
-- health checks explícitos para Binance, Yahoo, Ollama, Whisper e coletores;
-- migração formal da escala/afinidade de preços subcentavo;
-- autenticação local caso o terminal seja acessado fora de `localhost`.
-
-## 19. Arquivos que são fonte de verdade
-
-- regras financeiras: `lib/finance.ts`;
-- workflow e mutações: `lib/trading-engine.ts`;
-- símbolos e providers: `lib/market-data.ts`;
-- persistência realmente criada no runtime: `db/index.ts`;
-- schema declarativo: `db/schema.ts`;
-- analytics: `lib/analytics.ts`;
-- histórico offline: `lib/portfolio-history.ts`;
-- inteligência: `lib/market-intelligence.ts`;
-- contrato visual e chamadas da UI: `app/page.tsx`;
-- comandos suportados: `package.json`;
-- comportamento validado: `tests/`.
-
-Quando documentação e código divergirem, confirmar o comportamento nesses arquivos e atualizar este memorando no mesmo diff.
+1. run a secret scan excluding ignored runtime/build folders;
+2. confirm `.env.local`, `dist`, `.wrangler`, `.paperdesk`, and `node_modules` are ignored;
+3. run `npm run lint`;
+4. run `npm test`;
+5. keep preview and explicit confirmation mandatory;
+6. update this memo when behavior changes.

@@ -118,7 +118,7 @@ async function fetchYahooBars(symbol: string, start: number, end: number, interv
     chart?: { error?: { description?: string } | null; result?: Array<{ timestamp?: number[]; indicators?: { quote?: Array<{ close?: Array<number | null> }> } }> };
   };
   const result = payload.chart?.result?.[0];
-  if (!result) throw new Error(payload.chart?.error?.description ?? `Sem histórico para ${symbol}`);
+  if (!result) throw new Error(payload.chart?.error?.description ?? `No history for ${symbol}`);
   const closes = result.indicators?.quote?.[0]?.close ?? [];
   return (result.timestamp ?? []).flatMap((timestamp, index) => {
     const close = closes[index];
@@ -214,7 +214,7 @@ export async function backfillMissingPortfolioHistory(db: D1Database): Promise<{
       snapshotStatements.push(
         db.prepare("INSERT OR IGNORE INTO portfolio_snapshots (id, cash_cents, equity_cents, realized_pnl_cents, unrealized_pnl_cents, created_at) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(snapshotId, snapshot.cashCents, snapshot.equityCents, snapshot.realizedPnlCents, snapshot.unrealizedPnlCents, snapshot.createdAt),
-        db.prepare("INSERT OR IGNORE INTO snapshot_metadata (snapshot_id, source, coverage_pct, note) VALUES (?, 'MARKET_BACKFILL', ?, 'Reconstruído pela Binance com fallback Yahoo ao retornar após período offline')")
+        db.prepare("INSERT OR IGNORE INTO snapshot_metadata (snapshot_id, source, coverage_pct, note) VALUES (?, 'MARKET_BACKFILL', ?, 'Reconstructed by Binance with Yahoo fallback after returning from an offline period')")
           .bind(snapshotId, snapshot.coveragePct),
       );
     }
@@ -224,11 +224,11 @@ export async function backfillMissingPortfolioHistory(db: D1Database): Promise<{
       await db.batch([
         db.prepare("INSERT INTO app_meta (key, value) VALUES ('history_backfill_success', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(completedAt),
         db.prepare("INSERT INTO audit_events (id, event_type, entity_type, entity_id, message, payload_json, created_at) VALUES (?, 'HISTORY_BACKFILLED', 'ACCOUNT', 'paper-usd', ?, ?, ?)")
-          .bind(`audit-backfill-${crypto.randomUUID()}`, `${snapshots.length} pontos de patrimônio reconstruídos pela Binance/Yahoo`, JSON.stringify({ start: gapStart, end: gapEnd, interval, symbols }), completedAt),
+          .bind(`audit-backfill-${crypto.randomUUID()}`, `${snapshots.length} equity points reconstructed by Binance/Yahoo`, JSON.stringify({ start: gapStart, end: gapEnd, interval, symbols }), completedAt),
       ]);
     }
     return { inserted: snapshots.length };
   } catch (error) {
-    return { inserted: 0, error: error instanceof Error ? error.message : "Dados de mercado indisponíveis" };
+    return { inserted: 0, error: error instanceof Error ? error.message : "Market data unavailable" };
   }
 }

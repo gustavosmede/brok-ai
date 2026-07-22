@@ -119,18 +119,18 @@ export async function fetchYahooNews(symbol: string, name: string) {
 
 export async function getPositionDetail(rawSymbol: string): Promise<PositionDetail> {
   const symbol = normalizeSymbol(rawSymbol);
-  if (!symbol || !/^[A-Z0-9.^=\-]{1,24}$/.test(symbol)) throw new Error("Ticker inválido");
+  if (!symbol || !/^[A-Z0-9.^=\-]{1,24}$/.test(symbol)) throw new Error("Invalid ticker");
   const db = getDatabase();
   await ensureDatabase(db);
   const state = await getDashboardState();
   const position = state.positions.find((item) => item.symbol === symbol);
-  if (!position) throw new Error(`Não existe posição aberta em ${symbol}`);
+  if (!position) throw new Error(`No open position exists in ${symbol}`);
   const [fillResult, orderResult, actionResult, historyResult, newsResult] = await Promise.all([
     db.prepare("SELECT * FROM fills WHERE symbol = ? ORDER BY created_at ASC, id ASC").bind(symbol).all<DetailFillRow>(),
     db.prepare("SELECT * FROM orders WHERE symbol = ? ORDER BY created_at DESC, id DESC").bind(symbol).all<DetailOrderRow>(),
     db.prepare("SELECT id, symbol, action_type, effective_date, value_text, status FROM corporate_actions WHERE symbol = ? ORDER BY effective_date DESC").bind(symbol).all<DetailCorporateAction>(),
-    fetchMarketSeries(symbol, "1y").then((series) => ({ series, error: null as string | null })).catch((error) => ({ series: null, error: error instanceof Error ? error.message : "Histórico indisponível" })),
-    fetchYahooNews(symbol, position.name).then((news) => ({ news, error: null as string | null })).catch((error) => ({ news: [], error: error instanceof Error ? error.message : "Notícias indisponíveis" })),
+    fetchMarketSeries(symbol, "1y").then((series) => ({ series, error: null as string | null })).catch((error) => ({ series: null, error: error instanceof Error ? error.message : "History unavailable" })),
+    fetchYahooNews(symbol, position.name).then((news) => ({ news, error: null as string | null })).catch((error) => ({ news: [], error: error instanceof Error ? error.message : "News unavailable" })),
   ]);
   const fills = fillResult.results ?? [];
   const orders = orderResult.results ?? [];

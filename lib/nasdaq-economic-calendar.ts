@@ -106,6 +106,6 @@ export async function fetchNasdaqEconomicCalendar(days = 7, now = new Date()): P
     });
   }));
   const events = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
-  if (!events.length) throw new Error("Nasdaq Calendar não retornou eventos");
+  if (!events.length) throw new Error("Nasdaq Calendar returned no events");
   return events.sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
 }

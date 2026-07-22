@@ -1,116 +1,116 @@
 # Brok.ai
 
-Terminal local de paper trading com ordens simuladas, posições, risco e histórico de patrimônio. Os dados ficam no D1/SQLite local e nenhuma ordem real é enviada.
+Brok.ai is a local-first paper trading terminal for simulated orders, positions, risk, news, and portfolio P&L. Financial records stay in the local D1/SQLite database, and the current MVP does not send real broker orders.
 
-Criador principal: **Gustavo S. M.** (`gustavosmede`).
+Primary creator: **Gustavo S. M.** (`gustavosmede`).
 
-> Para arquitetura, regras financeiras, integrações, APIs, limitações e instruções para agentes de IA, consulte o [Memorando técnico do Brok.ai](./BROKAI_TECHNICAL_MEMO.md).
+For architecture, financial rules, integrations, APIs, limitations, and AI-agent guidance, read the [Brok.ai Technical Memo](./BROKAI_TECHNICAL_MEMO.md). For the business model, multibroker strategy, monetization, and global expansion thesis, read the [Brok.ai Business Memo](./BROKAI_BUSINESS_MEMO.md).
 
-## Aviso
+## Disclaimer
 
-Brok.ai não é corretora, consultor financeiro, exchange ou custodiante. O projeto é uma interface local-first para simulação, auditoria e preparação de ordens. Qualquer integração futura com corretoras deve preservar preview, confirmação explícita e logs auditáveis.
+Brok.ai is not a broker, investment adviser, exchange, or custodian. It is a local-first interface for simulation, audit, and order preparation. Any future live-broker integration must preserve preview, explicit confirmation, and auditable logs.
 
-## Rodar manualmente
+## Run Locally
 
-Requer Node.js `>=22.13.0`.
+Requires Node.js `>=22.13.0`.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000). Enquanto essa sessão estiver ativa, o painel atualiza as cotações e registra snapshots.
+Open [http://localhost:3000](http://localhost:3000). While this session is running, the dashboard refreshes quotes and records snapshots.
 
-## Notícias e calendário econômico
+## Market News And Economic Calendar
 
-O menu **5 NOTÍCIAS** combina fontes complementares com cache local:
+The **5 NEWS** menu combines complementary sources with a local cache:
 
-- FinancialJuice gratuito como feed principal de mercado, geopolítica e calendário, com atraso de 10 minutos;
-- GDELT para ampliar a cobertura global e geopolítica;
-- feeds oficiais do Federal Reserve, ECB, BLS e EIA, além dos registros recentes do SEC EDGAR;
-- Yahoo Finance como fallback automático para cada ticker aberto na carteira;
-- snapshot público da Nasdaq como fallback gratuito do calendário econômico, atualizado no máximo a cada 6 horas;
-- persistência no D1/SQLite local, preservando o que já foi recebido quando a internet cair.
+- FinancialJuice free stream as the primary delayed feed for market, geopolitics, and calendar updates;
+- GDELT for broader global and geopolitical coverage;
+- official feeds from the Federal Reserve, ECB, BLS, EIA, and recent SEC EDGAR filings;
+- Yahoo Finance as an automatic fallback for each ticker currently held in the portfolio;
+- the public Nasdaq snapshot as a free economic-calendar fallback, refreshed at most every 6 hours;
+- local D1/SQLite persistence, preserving previously received data when the internet is unavailable.
 
-Uma classificação determinística marca notícias como `HIGH`, `MEDIUM` ou `LOW`. Somente eventos com sinais objetivos de impacto — por exemplo decisões de juros, inflação/emprego, conflito, sanções, falência, suspensão de negociação ou guidance de uma posição — recebem a faixa vermelha e podem ser isolados pelo filtro **ALTO IMPACTO**.
+A deterministic classifier marks news as `HIGH`, `MEDIUM`, or `LOW`. Only objectively high-impact signals, such as rate decisions, inflation or labor data, conflict, sanctions, bankruptcy, trading halts, or guidance for an open position, receive the red high-impact treatment and can be isolated through the **HIGH IMPACT** filter.
 
-Para ativar o FinancialJuice, gere uma chave gratuita e configure uma vez:
+To enable FinancialJuice, generate a free key and configure it once:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Edite `.env.local`, substitua `fj_replace_me` pela chave e reinicie o Brok.ai. A chave fica apenas no processo local e nunca é enviada ao navegador. No modo manual (`npm run dev`), abra outro terminal para manter o stream ativo:
+Edit `.env.local`, replace `your_financialjuice_api_key_here` with your own key, and restart Brok.ai. The key stays in the local process and is never sent to the browser. In manual mode (`npm run dev`), open another terminal to keep the stream collector active:
 
 ```bash
 npm run news:collect
 ```
 
-O serviço diário instalado por `npm run collector:install` já inicia esse coletor automaticamente. Sem chave ou durante uma queda do stream, o restante do Brok.ai continua normal; GDELT, fontes oficiais e Yahoo permanecem disponíveis.
+The daily service installed by `npm run collector:install` starts this collector automatically. Without a key, or during a stream outage, the rest of Brok.ai keeps working; GDELT, official feeds, and Yahoo remain available.
 
-## Rodar diariamente em segundo plano no macOS
+## Run Daily In The Background On macOS
 
 ```bash
 npm run collector:install
 ```
 
-O comando faz o build e instala um `LaunchAgent` apenas para o usuário atual. Depois disso:
+This command builds the app and installs a `LaunchAgent` for the current macOS user. After that:
 
-- o Brok.ai inicia automaticamente quando você entra no macOS;
-- o coletor consulta as posições a cada 5 minutos mesmo com o navegador fechado;
-- o stream do FinancialJuice permanece conectado quando a chave estiver configurada;
-- o dashboard continua disponível em `http://localhost:3000`;
-- logs ficam em `.paperdesk/logs/`.
+- Brok.ai starts automatically when you log into macOS;
+- the collector checks positions every 5 minutes even when the browser is closed;
+- the FinancialJuice stream stays connected when a key is configured;
+- the dashboard remains available at `http://localhost:3000`;
+- logs are written under `.paperdesk/logs/`.
 
-Para remover o serviço sem apagar a carteira:
+To remove the service without deleting the portfolio:
 
 ```bash
 npm run collector:uninstall
 ```
 
-## Ditado local de novas ordens
+## Local Voice Dictation For New Orders
 
-Instale uma vez o Whisper local (modelo multilíngue `small`, cerca de 500 MB):
+Install the local Whisper service once. The multilingual `small` model is roughly 500 MB:
 
 ```bash
 npm run voice:install
 ```
 
-O instalador compila o `whisper.cpp` para Apple Silicon e cria um `LaunchAgent`, então o serviço de voz volta automaticamente ao entrar no macOS. No ticket **Nova ordem**, toque no microfone, fale por até 30 segundos e toque novamente para transcrever.
+The installer builds `whisper.cpp` for Apple Silicon and creates a `LaunchAgent`, so the voice service starts again when you log into macOS. In the **New Order** ticket, press the microphone, speak for up to 30 seconds, and press it again to transcribe.
 
-- a gravação é enviada apenas ao Whisper em `127.0.0.1` e não é armazenada;
-- a transcrição preenche o campo como texto editável;
-- o fluxo continua por Ollama, Binance/Yahoo, preview e confirmação manual obrigatória;
-- o navegador pedirá permissão para usar o microfone na primeira vez.
+- audio is sent only to Whisper at `127.0.0.1` and is not stored;
+- the transcription fills the command field as editable text;
+- the flow continues through Ollama, Binance/Yahoo, preview, and mandatory manual confirmation;
+- the browser asks for microphone permission the first time.
 
-Para desligar o serviço sem apagar o modelo baixado:
+To stop the service without deleting the downloaded model:
 
 ```bash
 npm run voice:uninstall
 ```
 
-## Mac desligado, dormindo ou sem internet
+## Mac Offline, Asleep, Or Without Internet
 
-Não são inventados preços durante o período ausente. Quando o Brok.ai volta e consegue acessar a internet, ele:
+Brok.ai does not invent prices during missing periods. When it comes back online, it:
 
-1. detecta uma lacuna maior que 15 minutos;
-2. baixa barras históricas de criptomoedas pela Binance Spot e dos demais ativos pelo Yahoo Finance, com fallback automático para o Yahoo;
-3. reconstrói caixa, posições e P&L usando somente o último preço conhecido em cada horário, sem olhar dados futuros;
-4. grava os pontos como `MARKET_BACKFILL` e mantém a lacuna no gráfico quando algum ativo não possui cobertura suficiente.
+1. detects gaps longer than 15 minutes;
+2. downloads historical bars from Binance Spot for cryptocurrencies and Yahoo Finance for other assets, with automatic Yahoo fallback;
+3. reconstructs cash, positions, and P&L using only the latest price known at each timestamp, without looking ahead;
+4. records reconstructed points as `MARKET_BACKFILL` and keeps gaps visible when an asset lacks enough coverage.
 
-O gráfico interrompe a linha em lacunas ainda não reconstruídas, em vez de desenhar uma diagonal enganosa. O Brok.ai tenta novamente automaticamente a cada minuto pela interface e a cada 5 minutos pelo coletor.
+The chart breaks the line across unreconstructed gaps instead of drawing a misleading diagonal. Brok.ai retries automatically every minute through the interface and every 5 minutes through the collector.
 
 ## Binance + Yahoo Finance
 
-Criptomoedas com par spot em USDT, como `BTC-USD` e `ETH-USD`, usam a API pública da Binance para cotação e histórico. Não é necessária chave de API. Se o par não existir, houver limite de requisições ou a Binance estiver indisponível, o Yahoo Finance assume automaticamente. A busca de nomes/tickers e os demais tipos de ativo continuam pelo Yahoo.
+Cryptocurrencies with a USDT spot pair, such as `BTC-USD` and `ETH-USD`, use Binance public market-data APIs for quotes and history. No API key is required. If the pair does not exist, rate limits apply, or Binance is unavailable, Yahoo Finance automatically takes over. Name/ticker search and all other asset types continue to use Yahoo.
 
-## Verificação
+## Verification
 
 ```bash
 npm run lint
 npm test
 ```
 
-## Licença
+## License
 
-Apache-2.0. Consulte [LICENSE](./LICENSE).
+Apache-2.0. See [LICENSE](./LICENSE).

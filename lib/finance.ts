@@ -99,7 +99,7 @@ export function percentToBps(value: string | number | null | undefined): number 
 }
 
 export function cashPercentageFromText(value: string): number | null {
-  const match = value.toLocaleLowerCase("pt-BR").match(/([\d.,]+)\s*%\s*(?:do|de)?\s*caixa\b/);
+  const match = value.toLocaleLowerCase("en-US").match(/([\d.,]+)\s*%\s*(?:of\s+)?(?:available\s+)?cash\b/);
   if (!match) return null;
   const percentage = parseDecimal(match[1]);
   return percentage > 0 ? percentage : null;

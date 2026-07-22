@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BinanceMarketDataProvider, normalizeBinanceKlines, normalizeMarketSymbol, parseBinancePairInput, resolveYahooAsset, toBinanceSpotSymbol } from "../lib/market-data.ts";
 
-test("converte símbolos Yahoo de cripto para pares spot USDT da Binance", () => {
+test("converts Yahoo crypto symbols to Binance USDT spot pairs", () => {
   assert.equal(toBinanceSpotSymbol("BTC-USD"), "BTCUSDT");
   assert.equal(toBinanceSpotSymbol("eth-usdt"), "ETHUSDT");
   assert.equal(toBinanceSpotSymbol("PEPEUSDT"), "PEPEUSDT");
@@ -13,16 +13,16 @@ test("converte símbolos Yahoo de cripto para pares spot USDT da Binance", () =>
   assert.equal(toBinanceSpotSymbol("USDT-USD"), null);
 });
 
-test("normaliza candles válidos da Binance e ignora linhas inválidas", () => {
+test("normalizes valid Binance candles and ignores invalid rows", () => {
   const bars = normalizeBinanceKlines([
     [1_700_000_000_000, "1", "2", "0.5", "123.456"],
-    ["inválido", "1", "2", "0.5", "99"],
+    ["invalid", "1", "2", "0.5", "99"],
     [1_700_000_100_000, "1", "2", "0.5", "0"],
   ]);
   assert.deepEqual(bars, [{ observedAt: new Date(1_700_000_000_000).toISOString(), priceCents: 12_345.6 }]);
 });
 
-test("resolve PEPEUSDT pela Binance e preserva preço subcentavo", async () => {
+test("resolves PEPEUSDT through Binance and preserves sub-cent price", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => Response.json({ symbol: "PEPEUSDT", price: "0.00000284" });
   try {

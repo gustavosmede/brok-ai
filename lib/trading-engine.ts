@@ -217,7 +217,7 @@ async function getOrFetchQuote(
     return quote;
   } catch (error) {
     if (cached) return cached;
-    throw new Error(`Não foi possível obter cotação de ${symbol}. Use uma cotação manual e tente novamente.`, { cause: error });
+    throw new Error(`Could not fetch quote for ${symbol}. Use a manual quote and try again.`, { cause: error });
   }
 }
 
@@ -244,13 +244,13 @@ function sideForIntent(intent: OrderIntent, positionQuantityMicros: number): Sid
 }
 
 function validateIntent(intent: OrderIntent): void {
-  if (!intent.symbol) throw new Error("Informe um ticker válido");
-  if (!/^[A-Z0-9.^=\-]{1,24}$/.test(intent.symbol)) throw new Error("Ticker inválido");
-  if (!['MARKET', 'LIMIT', 'STOP'].includes(intent.orderType)) throw new Error("Tipo de ordem inválido");
+  if (!intent.symbol) throw new Error("Enter a valid ticker");
+  if (!/^[A-Z0-9.^=\-]{1,24}$/.test(intent.symbol)) throw new Error("Invalid ticker");
+  if (!['MARKET', 'LIMIT', 'STOP'].includes(intent.orderType)) throw new Error("Invalid order type");
   if (intent.orderType !== "MARKET" && dollarsToPriceCents(intent.triggerPrice ?? 0) <= 0) {
-    throw new Error("Ordens limit e stop precisam de um preço de gatilho");
+    throw new Error("Limit and stop orders require a trigger price");
   }
-  if (intent.action !== "CLOSE" && parseDecimal(intent.sizingValue) <= 0) throw new Error("O tamanho da ordem deve ser positivo");
+  if (intent.action !== "CLOSE" && parseDecimal(intent.sizingValue) <= 0) throw new Error("Order size must be positive");
 }
 
 async function buildPreviewData(db: D1Database, input: OrderIntent): Promise<Omit<OrderPreview, "draftId" | "expiresAt">> {
@@ -274,31 +274,31 @@ async function buildPreviewData(db: D1Database, input: OrderIntent): Promise<Omi
     availableCashCents: availableCash,
     positionQuantityMicros: positionQuantity,
   });
-  if (quantityMicros <= 0) throw new Error("A ordem resultou em quantidade zero");
+  if (quantityMicros <= 0) throw new Error("The resultou em quantidade zero");
 
   const estimatedNotionalCents = positionMarketValueCents(quantityMicros, referencePriceCents);
-  if (intent.action === "SHORT" && positionQuantity > 0) throw new Error("Feche ou reduza a posição comprada antes de abrir short neste ativo");
-  if (intent.action === "BUY" && positionQuantity < 0) throw new Error("Use reduzir ou fechar para cobrir a posição short antes de comprar");
-  if (intent.action === "SELL" && positionQuantity <= 0) throw new Error("Não há posição comprada para vender. Para abrir vendido, peça um short.");
-  if ((intent.action === "REDUCE" || intent.action === "CLOSE") && positionQuantity === 0) throw new Error("Não há posição aberta neste ativo");
-  if ((intent.action === "SELL" || intent.action === "REDUCE" || intent.action === "CLOSE") && quantityMicros > Math.abs(positionQuantity)) throw new Error("A redução excede a posição disponível");
-  if ((intent.action === "BUY" || intent.action === "SHORT") && estimatedNotionalCents > availableCash) throw new Error("Caixa disponível insuficiente para esta ordem");
+  if (intent.action === "SHORT" && positionQuantity > 0) throw new Error("Close or reduce the long position before opening a short in this asset");
+  if (intent.action === "BUY" && positionQuantity < 0) throw new Error("Use reduce or close to cover the short position before buying");
+  if (intent.action === "SELL" && positionQuantity <= 0) throw new Error("There is no long position to sell. To open short exposure, request a short.");
+  if ((intent.action === "REDUCE" || intent.action === "CLOSE") && positionQuantity === 0) throw new Error("There is no open position in this asset");
+  if ((intent.action === "SELL" || intent.action === "REDUCE" || intent.action === "CLOSE") && quantityMicros > Math.abs(positionQuantity)) throw new Error("The reduction exceeds the available position");
+  if ((intent.action === "BUY" || intent.action === "SHORT") && estimatedNotionalCents > availableCash) throw new Error("Insufficient available cash for this order");
 
   const stopLossBps = percentToBps(intent.stopLossPct);
   const takeProfitBps = percentToBps(intent.takeProfitPct);
   const warnings: string[] = [];
   if (intent.orderType !== "MARKET") {
     if (side === "BUY" && intent.orderType === "LIMIT" && triggerPriceCents! >= quote.priceCents) {
-      warnings.push("Esta buy limit está acima da cotação e pode executar imediatamente.");
+      warnings.push("This buy limit is above the quote and may execute immediately.");
     }
     if (side === "BUY" && intent.orderType === "STOP" && triggerPriceCents! <= quote.priceCents) {
-      warnings.push("Esta buy stop está abaixo da cotação e pode executar imediatamente.");
+      warnings.push("This buy stop is below the quote and may execute immediately.");
     }
   }
-  if (Date.now() - Date.parse(quote.observedAt) > 5 * 60_000) warnings.push("A cotação usada está desatualizada.");
+  if (Date.now() - Date.parse(quote.observedAt) > 5 * 60_000) warnings.push("The quote used is stale.");
   const opensPosition = intent.action === "BUY" || intent.action === "SHORT";
-  if (!opensPosition && (stopLossBps > 0 || takeProfitBps > 0)) warnings.push("Proteções só são anexadas à abertura de uma posição.");
-  if (intent.action === "SHORT" && intent.symbol.startsWith("^")) warnings.push("Exposição short sintética ao índice para simulação; o índice não é negociável diretamente.");
+  if (!opensPosition && (stopLossBps > 0 || takeProfitBps > 0)) warnings.push("Protections are only attached when opening a position.");
+  if (intent.action === "SHORT" && intent.symbol.startsWith("^")) warnings.push("Synthetic short exposure to the index for simulation; the index is not directly tradable.");
   const direction = intent.action === "SHORT" ? "SHORT" : "LONG";
 
   return {
@@ -346,17 +346,17 @@ export async function confirmDraft(draftId: string): Promise<DashboardState> {
   const row = await db.prepare("SELECT * FROM command_drafts WHERE id = ?").bind(draftId).first<{
     id: string; intent_json: string; preview_json: string; status: string; expires_at: string;
   }>();
-  if (!row) throw new Error("Preview não encontrado");
-  if (row.status !== "PENDING") throw new Error("Este preview já foi utilizado");
+  if (!row) throw new Error("Preview not found");
+  if (row.status !== "PENDING") throw new Error("This preview has already been used");
   if (Date.parse(row.expires_at) < Date.now()) {
     await db.prepare("UPDATE command_drafts SET status = 'EXPIRED' WHERE id = ?").bind(draftId).run();
-    throw new Error("O preview expirou. Gere um novo antes de confirmar.");
+    throw new Error("The preview expired. Generate a new one before confirming.");
   }
   const intent = normalizeIntent(JSON.parse(row.intent_json) as OrderIntent);
   const freshPreview = await buildPreviewData(db, intent);
   const originalPreview = JSON.parse(row.preview_json) as OrderPreview;
   const drift = Math.abs(freshPreview.referencePriceCents - originalPreview.referencePriceCents) / Math.max(1, originalPreview.referencePriceCents);
-  if (intent.orderType === "MARKET" && drift > 0.01) throw new Error("A cotação mudou mais de 1%. Revise um novo preview.");
+  if (intent.orderType === "MARKET" && drift > 0.01) throw new Error("The quote moved more than 1%. Generate a new preview.");
 
   const side = freshPreview.side;
   const orderId = id("ord");
@@ -367,7 +367,7 @@ export async function confirmDraft(draftId: string): Promise<DashboardState> {
       .bind(orderId, intent.symbol, side, intent.orderType, role, freshPreview.quantityMicros, freshPreview.quantityMicros, freshPreview.triggerPriceCents, percentToBps(intent.stopLossPct) || null, percentToBps(intent.takeProfitPct) || null, intent.note ?? null, timestamp, timestamp),
     db.prepare("UPDATE command_drafts SET status = 'CONFIRMED' WHERE id = ?").bind(draftId),
     db.prepare("INSERT INTO audit_events (id, event_type, entity_type, entity_id, message, payload_json, created_at) VALUES (?, 'ORDER_CONFIRMED', 'ORDER', ?, ?, ?, ?)")
-      .bind(id("audit"), orderId, `${side} ${intent.symbol} confirmada após preview`, JSON.stringify(freshPreview), timestamp),
+      .bind(id("audit"), orderId, `${side} ${intent.symbol} confirmed after preview`, JSON.stringify(freshPreview), timestamp),
   ]);
   await processOpenOrders([intent.symbol]);
   return getDashboardState();
@@ -383,11 +383,11 @@ async function createProtectionOrders(db: D1Database, entry: OrderRow, fillPrice
   const direction = entry.side === "BUY" ? "LONG" : "SHORT";
   const protectiveSide: Side = entry.side === "BUY" ? "SELL" : "BUY";
   if (stopBps > 0) {
-    statements.push(db.prepare("INSERT INTO orders (id, symbol, side, order_type, role, status, quantity_micros, remaining_micros, trigger_price_cents, average_fill_price_cents, parent_order_id, oco_group_id, stop_loss_bps, take_profit_bps, note, created_at, updated_at) VALUES (?, ?, ?, 'STOP', 'STOP_LOSS', 'OPEN', ?, ?, ?, NULL, ?, ?, NULL, NULL, 'Proteção automática', ?, ?)")
+    statements.push(db.prepare("INSERT INTO orders (id, symbol, side, order_type, role, status, quantity_micros, remaining_micros, trigger_price_cents, average_fill_price_cents, parent_order_id, oco_group_id, stop_loss_bps, take_profit_bps, note, created_at, updated_at) VALUES (?, ?, ?, 'STOP', 'STOP_LOSS', 'OPEN', ?, ?, ?, NULL, ?, ?, NULL, NULL, 'Automatic protection', ?, ?)")
       .bind(id("ord"), entry.symbol, protectiveSide, entry.quantity_micros, entry.quantity_micros, protectivePriceCents(fillPriceCents, stopBps, "STOP_LOSS", direction), entry.id, ocoGroup, timestamp, timestamp));
   }
   if (takeBps > 0) {
-    statements.push(db.prepare("INSERT INTO orders (id, symbol, side, order_type, role, status, quantity_micros, remaining_micros, trigger_price_cents, average_fill_price_cents, parent_order_id, oco_group_id, stop_loss_bps, take_profit_bps, note, created_at, updated_at) VALUES (?, ?, ?, 'LIMIT', 'TAKE_PROFIT', 'OPEN', ?, ?, ?, NULL, ?, ?, NULL, NULL, 'Proteção automática', ?, ?)")
+    statements.push(db.prepare("INSERT INTO orders (id, symbol, side, order_type, role, status, quantity_micros, remaining_micros, trigger_price_cents, average_fill_price_cents, parent_order_id, oco_group_id, stop_loss_bps, take_profit_bps, note, created_at, updated_at) VALUES (?, ?, ?, 'LIMIT', 'TAKE_PROFIT', 'OPEN', ?, ?, ?, NULL, ?, ?, NULL, NULL, 'Automatic protection', ?, ?)")
       .bind(id("ord"), entry.symbol, protectiveSide, entry.quantity_micros, entry.quantity_micros, protectivePriceCents(fillPriceCents, takeBps, "TAKE_PROFIT", direction), entry.id, ocoGroup, timestamp, timestamp));
   }
   if (statements.length) await db.batch(statements);
@@ -458,7 +458,7 @@ export async function processOpenOrders(symbols?: string[]): Promise<number> {
     if (order.role === "ENTRY" && notional > entryCapacity) {
       await db.batch([
         db.prepare("UPDATE orders SET status = 'REJECTED', updated_at = ? WHERE id = ?").bind(nowIso(), order.id),
-        db.prepare("INSERT INTO audit_events (id, event_type, entity_type, entity_id, message, payload_json, created_at) VALUES (?, 'ORDER_REJECTED', 'ORDER', ?, 'Ordem rejeitada por caixa insuficiente', NULL, ?)").bind(id("audit"), order.id, nowIso()),
+        db.prepare("INSERT INTO audit_events (id, event_type, entity_type, entity_id, message, payload_json, created_at) VALUES (?, 'ORDER_REJECTED', 'ORDER', ?, 'Order rejected due to insufficient cash', NULL, ?)").bind(id("audit"), order.id, nowIso()),
       ]);
       continue;
     }
@@ -594,7 +594,7 @@ export async function syncMarket(args: { symbols?: string[]; manualQuotes?: Reco
       await storeQuote(db, quote);
       updated.push(quote);
     } catch (error) {
-      errors.push(`${symbol}: ${error instanceof Error ? error.message : "falha na cotação"}`);
+      errors.push(`${symbol}: ${error instanceof Error ? error.message : "quote failure"}`);
     }
   }
   const filled = await processOpenOrders(symbols);
@@ -605,12 +605,12 @@ export async function cancelOrder(orderId: string): Promise<DashboardState> {
   const db = getDatabase();
   await ensureDatabase(db);
   const order = await db.prepare("SELECT * FROM orders WHERE id = ?").bind(orderId).first<OrderRow>();
-  if (!order) throw new Error("Ordem não encontrada");
-  if (order.status !== "OPEN") throw new Error("Somente ordens abertas podem ser canceladas");
+  if (!order) throw new Error("Order not found");
+  if (order.status !== "OPEN") throw new Error("Somente ordens open podem ser canceladas");
   const timestamp = nowIso();
   const statements = [
     db.prepare("UPDATE orders SET status = 'CANCELLED', remaining_micros = 0, updated_at = ? WHERE id = ?").bind(timestamp, orderId),
-    db.prepare("INSERT INTO audit_events (id, event_type, entity_type, entity_id, message, payload_json, created_at) VALUES (?, 'ORDER_CANCELLED', 'ORDER', ?, ?, NULL, ?)").bind(id("audit"), orderId, `Ordem ${order.symbol} cancelada pelo usuário`, timestamp),
+    db.prepare("INSERT INTO audit_events (id, event_type, entity_type, entity_id, message, payload_json, created_at) VALUES (?, 'ORDER_CANCELLED', 'ORDER', ?, ?, NULL, ?)").bind(id("audit"), orderId, `Order ${order.symbol} cancelled by the user`, timestamp),
   ];
   if (order.oco_group_id) statements.push(db.prepare("UPDATE orders SET status = 'CANCELLED', remaining_micros = 0, updated_at = ? WHERE oco_group_id = ? AND status = 'OPEN'").bind(timestamp, order.oco_group_id));
   await db.batch(statements);
@@ -623,7 +623,7 @@ export async function applyCorporateAction(input: { symbol: string; actionType: 
   const symbol = normalizeSymbol(input.symbol);
   const positions = buildPositions(fillsForDomain(await loadFills(db)));
   const position = positions.get(symbol);
-  if (!position || position.quantityMicros <= 0) throw new Error(`Não há posição aberta em ${symbol}`);
+  if (!position || position.quantityMicros <= 0) throw new Error(`No open position in ${symbol}`);
   const actionId = id("corp");
   const timestamp = nowIso();
   const statements: D1PreparedStatement[] = [
@@ -635,7 +635,7 @@ export async function applyCorporateAction(input: { symbol: string; actionType: 
     statements.push(db.prepare("INSERT INTO cash_ledger (id, delta_cents, entry_type, reference_id, description, created_at) VALUES (?, ?, 'DIVIDEND', ?, ?, ?)").bind(id("cash"), credit, actionId, `Dividendo ${symbol}`, timestamp));
   } else {
     const ratio = parseDecimal(input.value);
-    if (ratio <= 0) throw new Error("A proporção do split deve ser positiva");
+    if (ratio <= 0) throw new Error("The split ratio must be positive");
     const deltaMicros = Math.round(position.quantityMicros * (ratio - 1));
     if (deltaMicros !== 0) {
       const orderId = id("ord");
@@ -656,28 +656,28 @@ export async function applyCorporateAction(input: { symbol: string; actionType: 
 
 export function parseIntentWithRules(message: string): OrderIntent {
   const text = message.trim();
-  const lower = text.toLocaleLowerCase("pt-BR");
+  const lower = text.toLocaleLowerCase("en-US");
   const tickerMatch = [...text.matchAll(/(?:\^[A-Z0-9.]{1,20}|\b[A-Z0-9.]{1,20}(?:[-=][A-Z0-9.]{1,10})?\b)/g)]
     .map((match) => match[0])
     .find((candidate) => /[A-Z^]/.test(candidate) && !["US", "USD"].includes(candidate));
   const alias = Object.entries(COMPANY_SYMBOL_FALLBACKS).find(([name]) => lower.includes(name));
-  const companyMatch = text.match(/(?:aç(?:ão|ões)\s+(?:da|de)|(?:da|de|em)\s+)([\p{L}\d.& -]+?)(?=\s+(?:a\s+mercado|ao\s+mercado|quando|com\s+(?:stop|[\d.,]+\s*%)|usando|utilizando|stop|alvo|take[ -]?profit|por\s+us\$)|[,.;]|$)/iu);
+  const companyMatch = text.match(/(?:shares?\s+(?:of|in)|(?:of|in)\s+)([\p{L}\d.& -]+?)(?=\s+(?:at\s+market|market|when|with\s+(?:stop|[\d.,]+\s*%)|using|stop|target|take[ -]?profit|for\s+us\$)|[,.;]|$)/iu);
   const symbol = alias?.[1] ?? tickerMatch ?? companyMatch?.[1]?.trim() ?? "";
-  const isReduce = /reduz|reduza|diminu|realize/.test(lower);
-  const isClose = /zere|zerar|feche|fechar|venda tudo/.test(lower);
-  const isShort = /\bshort\b|vendid[oa]|venda a descoberto/.test(lower);
-  const isSell = /vend|reduz|dimin|zere|feche/.test(lower);
+  const isReduce = /reduce|trim|decrease|take profit on/.test(lower);
+  const isClose = /close|flatten|exit|sell all|cover all/.test(lower);
+  const isShort = /\bshort\b|short sell|open a short/.test(lower);
+  const isSell = /sell|reduce|trim|decrease|close|flatten|exit/.test(lower);
   const action: OrderIntent["action"] = isClose ? "CLOSE" : isReduce ? "REDUCE" : isShort ? "SHORT" : isSell ? "SELL" : "BUY";
   const usdMatch = lower.match(/(?:us\$|usd|\$)\s*([\d.,]+)/)
-    ?? lower.match(/([\d.,]+)\s*(?:d[oó]lares?|usd)\b/);
+    ?? lower.match(/([\d.,]+)\s*(?:dollars?|usd)\b/);
   const percentMatch = lower.match(/([\d.,]+)\s*%/);
-  const sharesMatch = lower.match(/(?:compre|comprar|venda|vender|reduza)\s+(\d+(?:[.,]\d+)?)\s+(?:aç|acoes|ações|cotas?)/);
+  const sharesMatch = lower.match(/(?:buy|sell|reduce|short)\s+(\d+(?:[.,]\d+)?)\s+(?:shares?|units?)/);
   let sizingType: OrderIntent["sizingType"] = "SHARES";
   let sizingValue = sharesMatch?.[1] ?? "1";
   if (isClose) {
     sizingType = "POSITION_PCT";
     sizingValue = "100";
-  } else if (percentMatch && /caixa/.test(lower)) {
+  } else if (percentMatch && /cash/.test(lower)) {
     sizingType = "CASH_PCT";
     sizingValue = percentMatch[1];
   } else if (percentMatch && (isSell || /posi/.test(lower))) {
@@ -690,15 +690,15 @@ export function parseIntentWithRules(message: string): OrderIntent {
     const firstNumber = lower.match(/\b(\d+(?:[.,]\d+)?)\b/);
     sizingValue = firstNumber?.[1] ?? "1";
   }
-  const explicitlyMarket = /\b(?:a|ao)\s+mercado\b/.test(lower);
+  const explicitlyMarket = /\bat\s+market\b|\bmarket\b/.test(lower);
   const triggerMatch = explicitlyMarket
     ? null
-    : lower.match(/\b(?:a|em|atingir|chegar(?:\s+a)?|preço(?:\s+de)?)\s+(?:us\$|usd|\$)?\s*([\d.,]+)/);
+    : lower.match(/\b(?:at|to|reach|when|price(?:\s+of)?)\s+(?:us\$|usd|\$)?\s*([\d.,]+)/);
   const orderType: OrderIntent["orderType"] = explicitlyMarket
     ? "MARKET"
-    : /\b(?:romp|acima|stop de compra)/.test(lower) ? "STOP" : triggerMatch ? "LIMIT" : "MARKET";
+    : /\b(?:breakout|above|buy stop)/.test(lower) ? "STOP" : triggerMatch ? "LIMIT" : "MARKET";
   const stopLoss = lower.match(/stop(?:-loss)?(?:\s+de|\s+em|\s+)?\s*([\d.,]+)\s*%/);
-  const takeProfit = lower.match(/(?:take profit|take-profit|alvo)(?:\s+de|\s+em|\s+)?\s*([\d.,]+)\s*%/);
+  const takeProfit = lower.match(/(?:take profit|take-profit|target)(?:\s+of|\s+at|\s+)?\s*([\d.,]+)\s*%/);
   return {
     action,
     symbol,
@@ -708,7 +708,7 @@ export function parseIntentWithRules(message: string): OrderIntent {
     triggerPrice: triggerMatch?.[1] ?? null,
     stopLossPct: stopLoss?.[1] ?? null,
     takeProfitPct: takeProfit?.[1] ?? null,
-    note: `Interpretado de: ${message}`,
+    note: `Interpreted from: ${message}`,
   };
 }
 
@@ -733,17 +733,17 @@ export async function parseIntentWithOllama(message: string, model = "qwen3.5:9b
     required: ["action", "symbol", "sizingType", "sizingValue", "orderType", "triggerPrice", "stopLossPct", "takeProfitPct", "note"],
   };
   try {
-    const systemPrompt = `Você converte pedidos em português informal em uma única ordem de paper trading estruturada. Não dê recomendações nem explicações.
-- Entenda erros de digitação, palavras repetidas e frases conversacionais.
-- LONG, comprado, entrar comprado e abrir posição comprada significam BUY.
-- SHORT, vendido e venda a descoberto significam SHORT. SELL é apenas venda de uma posição long existente.
-- REDUCE reduz a posição existente e CLOSE fecha 100%, seja long ou short.
-- CASH_PCT é percentual do caixa disponível; POSITION_PCT é percentual da posição existente; NOTIONAL é valor em USD; SHARES é quantidade de unidades.
-- Extraia o nome da empresa, ativo ou tema em symbol. Se souber o ticker Yahoo com segurança, pode usá-lo; se não souber, mantenha o nome citado para o servidor pesquisar no Yahoo Finance. Nunca invente ticker.
+    const systemPrompt = `You convert informal English trading requests into one structured paper-trading order. Do not provide recommendations or explanations.
+- Understand typos, repeated words, and conversational phrasing.
+- LONG, buy, go long, and open a long position mean BUY.
+- SHORT, short sell, and open a short position mean SHORT. SELL only sells an existing long position.
+- REDUCE reduces the existing position and CLOSE closes 100%, whether long or short.
+- CASH_PCT is a percentage of available cash; POSITION_PCT is a percentage of the existing position; NOTIONAL is USD value; SHARES is unit quantity.
+- Extract the company, asset, or theme name into symbol. If you know the Yahoo ticker confidently, you may use it; otherwise keep the cited name so the server can search Yahoo Finance. Never invent tickers.
 - Nunca interprete US ou USD como ticker.
-- Sem preço explícito, use MARKET. Compra abaixo do preço é LIMIT; rompimento acima é STOP.
-- Stop-loss e take-profit percentuais são separados do tamanho da ordem.
-Exemplo: "abra uma posição long em chevron com 1% do caixa disponível" => action BUY, symbol Chevron, sizingType CASH_PCT, sizingValue 1, orderType MARKET.
+- Without an explicit price, use MARKET. A buy below price is LIMIT; a breakout above price is STOP.
+- Stop-loss and take-profit percentages are separate from order size.
+Example: "open a long position in Chevron with 1% of available cash" => action BUY, symbol Chevron, sizingType CASH_PCT, sizingValue 1, orderType MARKET.
 Retorne somente o objeto que respeita o schema.`;
     let previousContent = "";
     let rawIntent: OrderIntent | null = null;
@@ -754,7 +754,7 @@ Retorne somente o objeto que respeita o schema.`;
         { role: "user", content: message },
         ...(attempt === 2 ? [
           { role: "assistant", content: previousContent },
-          { role: "user", content: "A resposta anterior estava vazia ou inválida. Corrija os campos e retorne somente o JSON do schema." },
+          { role: "user", content: "The previous response was empty or invalid. Fix the fields and return only schema JSON." },
         ] : []),
       ];
       const response = await fetch("http://127.0.0.1:11434/api/chat", {
@@ -803,7 +803,7 @@ Retorne somente o objeto que respeita o schema.`;
         ].filter(Boolean);
         if (missingFields.length) {
           if (attempt === 1) continue;
-          throw new Error(`Ollama retornou campos obrigatórios vazios: ${missingFields.join(", ")}`);
+          throw new Error(`Ollama returned empty required fields: ${missingFields.join(", ")}`);
         }
         rawIntent = repaired;
         break;
@@ -812,7 +812,7 @@ Retorne somente o objeto que respeita o schema.`;
         throw error;
       }
     }
-    if (!rawIntent) throw new Error("Ollama não retornou uma ordem válida");
+    if (!rawIntent) throw new Error("Ollama did not return a valid order");
     const result = await resolveYahooAsset(rawIntent.symbol);
     const intent = normalizeIntent({ ...rawIntent, symbol: result.resolution?.symbol ?? rawIntent.symbol });
     if (!result.needsSelection) validateIntent(intent);
@@ -822,6 +822,6 @@ Retorne somente o objeto que respeita o schema.`;
     const result = await resolveYahooAsset(rawIntent.symbol);
     const intent = normalizeIntent({ ...rawIntent, symbol: result.resolution?.symbol ?? rawIntent.symbol });
     if (!result.needsSelection) validateIntent(intent);
-    return { intent, parser: "RULES", ...result, processing: { model, durationMs: Date.now() - startedAt, ollamaAttempts, repairedFields: [] }, warning: `Ollama indisponível; usei o parser local de regras e consultei Binance/Yahoo. ${error instanceof Error ? error.message : ""}`.trim() };
+    return { intent, parser: "RULES", ...result, processing: { model, durationMs: Date.now() - startedAt, ollamaAttempts, repairedFields: [] }, warning: `Ollama unavailable; used the local rules parser and checked Binance/Yahoo. ${error instanceof Error ? error.message : ""}`.trim() };
   }
 }

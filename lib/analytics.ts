@@ -151,7 +151,7 @@ export async function fetchYahooSeries(symbol: string, range: "1y" | "5y" = "1y"
       ? [{ date: new Date(timestamp * 1000).toISOString().slice(0, 10), closeCents: roundPriceCents(close * 100) }]
       : [];
   });
-  if (!bars.length) throw new Error(`Histórico indisponível para ${symbol}`);
+  if (!bars.length) throw new Error(`History unavailable para ${symbol}`);
   const value = {
     symbol,
     previousCloseCents: result?.meta?.previousClose ? Math.round(result.meta.previousClose * 100) : bars.at(-2)?.closeCents ?? null,
@@ -316,15 +316,15 @@ export async function buildPortfolioAnalytics(state: DashboardState): Promise<Po
   const alerts: AnalyticsAlert[] = [];
   for (const position of state.positions) {
     const analytics = positionAnalytics.find((item) => item.symbol === position.symbol)!;
-    if (!analytics.stopPriceCents) alerts.push({ severity: "HIGH", title: `${position.symbol} sem stop`, detail: `${(position.allocationPct).toFixed(1)}% do patrimônio está sem proteção automática.` });
-    if (position.allocationPct >= 25) alerts.push({ severity: "MEDIUM", title: `Concentração em ${position.symbol}`, detail: `A posição representa ${position.allocationPct.toFixed(1)}% do patrimônio.` });
-    if (analytics.quoteAgeMinutes === null || analytics.quoteAgeMinutes > 15) alerts.push({ severity: "MEDIUM", title: `Cotação desatualizada: ${position.symbol}`, detail: analytics.quoteAgeMinutes === null ? "Sem horário de cotação disponível." : `Última atualização há ${analytics.quoteAgeMinutes.toFixed(0)} minutos.` });
+    if (!analytics.stopPriceCents) alerts.push({ severity: "HIGH", title: `${position.symbol} without stop`, detail: `${(position.allocationPct).toFixed(1)}% of equity has no automatic protection.` });
+    if (position.allocationPct >= 25) alerts.push({ severity: "MEDIUM", title: `Concentration in ${position.symbol}`, detail: `The position represents ${position.allocationPct.toFixed(1)}% of equity.` });
+    if (analytics.quoteAgeMinutes === null || analytics.quoteAgeMinutes > 15) alerts.push({ severity: "MEDIUM", title: `Stale quote: ${position.symbol}`, detail: analytics.quoteAgeMinutes === null ? "No quote timestamp available." : `Last update ${analytics.quoteAgeMinutes.toFixed(0)} minutes ago.` });
   }
   for (const order of state.openOrders) {
     const ageHours = (Date.now() - Date.parse(order.created_at)) / 3_600_000;
-    if (ageHours > 24) alerts.push({ severity: "INFO", title: `Ordem antiga: ${order.symbol}`, detail: `A ordem ${order.order_type} está aberta há ${ageHours.toFixed(0)} horas.` });
+    if (ageHours > 24) alerts.push({ severity: "INFO", title: `Old order: ${order.symbol}`, detail: `The ${order.order_type} order has been open for ${ageHours.toFixed(0)} hours.` });
   }
-  if (drawdowns.currentDrawdownPct <= -10) alerts.push({ severity: "HIGH", title: "Drawdown elevado", detail: `A carteira está ${Math.abs(drawdowns.currentDrawdownPct).toFixed(1)}% abaixo do pico.` });
+  if (drawdowns.currentDrawdownPct <= -10) alerts.push({ severity: "HIGH", title: "Elevated drawdown", detail: `The portfolio is ${Math.abs(drawdowns.currentDrawdownPct).toFixed(1)}% below the peak.` });
 
   const quoteAges = state.positions.flatMap((position) => position.quoteObservedAt ? [(Date.now() - Date.parse(position.quoteObservedAt)) / 60_000] : []);
   const distinctHistoryDays = new Set(snapshots.map((snapshot) => snapshot.created_at.slice(0, 10))).size;
@@ -376,7 +376,7 @@ export async function buildPortfolioAnalytics(state: DashboardState): Promise<Po
       quoteAgeMinutes: quoteAges.length ? Math.max(...quoteAges) : null,
       staleQuotes,
       historyPoints: distinctHistoryDays,
-      note: distinctHistoryDays < 20 ? `Há ${distinctHistoryDays} ${distinctHistoryDays === 1 ? "sessão registrada" : "sessões registradas"}; métricas de performance ganham confiabilidade após 20 pregões.` : "Histórico diário suficiente para métricas de performance observadas.",
+      note: distinctHistoryDays < 20 ? `There are ${distinctHistoryDays} ${distinctHistoryDays === 1 ? "recorded session" : "recorded sessions"}; performance metrics become more reliable after 20 trading days.` : "Daily history is sufficient for observed performance metrics.",
     },
   };
 }

@@ -10,6 +10,6 @@ test("closes the US equity market on weekends and observed holidays", () => {
 test("opens during a regular New York weekday session", () => {
   const status = getUsEquityMarketStatus(new Date("2026-07-20T15:00:00Z"));
   assert.equal(status.isOpen, true);
-  assert.equal(status.reason, "Sessão regular NYSE/Nasdaq");
+  assert.equal(status.reason, "NYSE/Nasdaq regular session");
 });
 

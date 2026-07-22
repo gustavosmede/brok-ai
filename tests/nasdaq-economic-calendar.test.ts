@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { inferEconomicImpact, newYorkTimeToUtc, normalizeNasdaqEvent } from "../lib/nasdaq-economic-calendar.ts";
 
-test("converte horário Eastern da Nasdaq para UTC com horário de verão", () => {
+test("converts Nasdaq Eastern time to UTC with daylight saving time", () => {
   assert.equal(newYorkTimeToUtc("2026-07-21", "08:30"), "2026-07-21T12:30:00.000Z");
   assert.equal(newYorkTimeToUtc("2026-01-15", "08:30"), "2026-01-15T13:30:00.000Z");
 });
 
-test("normaliza campos vazios e valores do calendário Nasdaq", () => {
+test("normalizes empty fields and Nasdaq calendar values", () => {
   const event = normalizeNasdaqEvent("2026-07-21", { gmt: "08:30", country: "Canada", eventName: "Core CPI", actual: "&nbsp;", consensus: "2.5%", previous: "2.7%" });
   assert.ok(event);
   assert.equal(event.countryCode, "CA");
@@ -18,7 +18,7 @@ test("normaliza campos vazios e valores do calendário Nasdaq", () => {
   assert.equal(event.source, "NASDAQ");
 });
 
-test("infere impacto macro sem substituir atualizações do FinancialJuice", () => {
+test("infers macro impact without replacing FinancialJuice updates", () => {
   assert.equal(inferEconomicImpact("FOMC Interest Rate Decision"), "HIGH");
   assert.equal(inferEconomicImpact("German PPI"), "MEDIUM");
   assert.equal(inferEconomicImpact("Wholesale Inventories"), "LOW");

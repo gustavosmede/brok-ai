@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     if (!payload.orderId) return Response.json({ error: "orderId ausente" }, { status: 400 });
     return Response.json({ state: await cancelOrder(payload.orderId) });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Não foi possível cancelar" }, { status: 409 });
+    return Response.json({ error: error instanceof Error ? error.message : "Could not cancel" }, { status: 409 });
   }
 }
 

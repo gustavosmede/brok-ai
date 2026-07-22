@@ -1,14 +1,14 @@
-# Instruções para agentes
+# Agent instructions
 
-Antes de analisar ou alterar este projeto, leia integralmente [`BROKAI_TECHNICAL_MEMO.md`](./BROKAI_TECHNICAL_MEMO.md). Ele descreve o produto, arquitetura, fluxo financeiro, providers, persistência, APIs, limitações e fontes de verdade.
+Before reviewing or changing this project, read [`BROKAI_TECHNICAL_MEMO.md`](./BROKAI_TECHNICAL_MEMO.md) in full. It describes the product, architecture, financial flow, providers, persistence, APIs, limitations, and sources of truth.
 
-Regras não negociáveis:
+Non-negotiable rules:
 
-- Brok.ai permanece exclusivamente em paper trading;
-- preview e confirmação explícita continuam obrigatórios;
-- LLM interpreta texto, mas não calcula nem executa operações;
-- posições derivam de fills e caixa deriva do ledger;
-- segredos de `.env.local` nunca entram em código, documentação, logs ou respostas;
-- preserve Binance para cripto, Yahoo como fallback e precisão subcentavo;
-- faça o menor diff correto e execute `npm run lint` e `npm test` antes de concluir mudanças funcionais;
-- se código e memorando divergirem, valide o código-fonte e atualize o memorando no mesmo diff.
+- no real broker orders are sent by the current MVP;
+- preview and explicit confirmation remain mandatory;
+- the LLM interprets text, but never calculates or executes trades;
+- positions are derived from fills, and cash is derived from the ledger;
+- `.env.local` secrets never enter code, docs, logs, commits, or responses;
+- preserve Binance for crypto, Yahoo as fallback, and sub-cent price precision;
+- make the smallest correct diff and run `npm run lint` and `npm test` before completing functional changes;
+- if code and memo diverge, validate the source code and update the memo in the same diff.

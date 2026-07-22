@@ -4,7 +4,7 @@ export async function GET() {
   try {
     return Response.json({ state: await getDashboardState() });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Falha ao carregar a carteira" }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : "Failed to load the portfolio" }, { status: 500 });
   }
 }
 

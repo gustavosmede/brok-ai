@@ -4,7 +4,7 @@ import { getDashboardState } from "../../../lib/trading-engine";
 
 function configured(): boolean {
   const value = (env as unknown as Record<string, unknown>).FINANCIALJUICE_API_KEY;
-  return typeof value === "string" && value.trim().length > 8 && value !== "fj_replace_me";
+  return typeof value === "string" && value.trim().length > 8 && value !== "your_financialjuice_api_key_here";
 }
 
 export async function GET() {
@@ -13,6 +13,6 @@ export async function GET() {
     const holdings = state.positions.map(({ symbol, name }) => ({ symbol, name }));
     return Response.json({ intelligence: await getMarketIntelligence(holdings, configured()) });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Falha ao carregar notícias" }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : "Failed to load news" }, { status: 500 });
   }
 }

@@ -59,7 +59,7 @@ export async function fetchBinanceBars(
     if (next <= cursor || pageBars.length < 1000) break;
     cursor = next;
   }
-  if (!bars.length) throw new Error(`Histórico Binance indisponível para ${symbol}`);
+  if (!bars.length) throw new Error(`Binance history unavailable for ${symbol}`);
   return bars;
 }
 
@@ -178,8 +178,8 @@ function toResolution(query: string, quote: YahooSearchQuote): SymbolResolution 
 
 export async function resolveYahooAsset(rawQuery: string): Promise<AssetResolutionResult> {
   const query = rawQuery.trim();
-  if (!query) throw new Error("Não identifiquei o ativo, tema ou ticker");
-  if (["US", "USD"].includes(normalizeSymbol(query))) throw new Error(`${query} é uma moeda de referência, não um ticker`);
+  if (!query) throw new Error("Could not identify the asset, theme, or ticker");
+  if (["US", "USD"].includes(normalizeSymbol(query))) throw new Error(`${query} is a reference currency, not a ticker`);
   const normalizedQuery = normalizeSearchText(query);
   const localSymbol = COMPANY_SYMBOL_FALLBACKS[normalizedQuery];
   const binancePair = parseBinancePairInput(query);
@@ -211,8 +211,8 @@ export async function resolveYahooAsset(rawQuery: string): Promise<AssetResoluti
       .filter((quote) => quote.symbol)
       .sort((a, b) => Number(assetClassOf(b) === "ETF") - Number(assetClassOf(a) === "ETF") || (b.score ?? 0) - (a.score ?? 0))
       .slice(0, 5)
-      .map((quote) => ({ ...toResolution(query, quote), reason: assetClassOf(quote) === "ETF" ? `ETF relacionado a ${query}` : `Ativo relacionado a ${query}` }));
-    if (!preferred.length) throw new Error(`Nenhum ativo ou alternativa encontrado para ${query}`);
+      .map((quote) => ({ ...toResolution(query, quote), reason: assetClassOf(quote) === "ETF" ? `ETF relacionado a ${query}` : `Asset relacionado a ${query}` }));
+    if (!preferred.length) throw new Error(`No asset or alternative found for ${query}`);
     return { resolution: null, suggestions: preferred, needsSelection: true };
   } catch (error) {
     const symbol = localSymbol ?? binancePair?.portfolioSymbol ?? (/^[A-Z0-9.^=\-]{1,24}$/.test(query) && !["US", "USD"].includes(query) ? query : "");
@@ -226,7 +226,7 @@ export class YahooMarketDataProvider implements MarketDataProvider {
 
   async getQuote(rawSymbol: string): Promise<Quote> {
     const symbol = normalizeSymbol(rawSymbol);
-    if (!symbol) throw new Error("Símbolo inválido");
+    if (!symbol) throw new Error("Invalid symbol");
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`;
     const response = await fetch(url, {
       headers: { "User-Agent": "Brok.ai/1.0 personal-research" },
@@ -247,7 +247,7 @@ export class YahooMarketDataProvider implements MarketDataProvider {
     const lastClose = [...closes].reverse().find((value) => typeof value === "number");
     const price = result?.meta?.regularMarketPrice ?? lastClose ?? result?.meta?.previousClose;
     if (!price || !Number.isFinite(price)) {
-      throw new Error(payload.chart?.error?.description ?? `Sem cotação para ${symbol}`);
+      throw new Error(payload.chart?.error?.description ?? `No quote for ${symbol}`);
     }
     return {
       symbol,
@@ -275,7 +275,7 @@ export class BinanceMarketDataProvider implements MarketDataProvider {
     if (!response.ok) throw new Error(`Binance respondeu ${response.status} para ${symbol}`);
     const payload = await response.json() as { price?: string };
     const price = Number(payload.price);
-    if (!Number.isFinite(price) || price <= 0) throw new Error(`Sem cotação Binance para ${symbol}`);
+    if (!Number.isFinite(price) || price <= 0) throw new Error(`No Binance quote for ${symbol}`);
     return {
       symbol: yahooSymbol,
       priceCents: roundPriceCents(price * 100),
@@ -330,7 +330,7 @@ export class AlpacaMarketDataProvider implements MarketDataProvider {
     const ask = payload.quote?.ap;
     const bid = payload.quote?.bp;
     const price = ask && bid ? (ask + bid) / 2 : ask ?? bid;
-    if (!price) throw new Error(`Sem cotação Alpaca para ${symbol}`);
+    if (!price) throw new Error(`No Alpaca quote for ${symbol}`);
     return {
       symbol,
       priceCents: roundPriceCents(price * 100),

@@ -13,7 +13,7 @@ PLIST_PATH="$AGENT_DIR/$LABEL.plist"
 LOG_DIR="$PROJECT_DIR/.paperdesk/logs"
 
 if ! command -v brew >/dev/null 2>&1; then
-  echo "Homebrew não encontrado. Instale o Homebrew para compilar o Whisper local."
+  echo "Homebrew not found. Install Homebrew to compile local Whisper."
   exit 1
 fi
 
@@ -40,7 +40,7 @@ if [[ ! -f "$MODEL_PATH" ]]; then
 fi
 
 if [[ ! -x "$SERVER_PATH" || ! -f "$MODEL_PATH" ]]; then
-  echo "A instalação do Whisper não produziu o servidor ou o modelo esperado."
+  echo "The Whisper installation did not produce the expected server or model."
   exit 1
 fi
 
@@ -57,11 +57,11 @@ launchctl kickstart -k "gui/$(id -u)/$LABEL"
 
 for attempt in {1..120}; do
   if curl -sS --max-time 2 http://127.0.0.1:8080/health 2>/dev/null | grep -q '"status":"ok"'; then
-    echo "Whisper local instalado e ativo. O microfone do Brok.ai já pode ser usado."
+    echo "Local Whisper is installed and active. The Brok.ai microphone is ready to use."
     exit 0
   fi
   sleep 1
 done
 
-echo "O serviço foi instalado, mas ainda não respondeu. Veja $LOG_DIR/whisper.err.log"
+echo "The service was installed, but has not responded yet. See $LOG_DIR/whisper.err.log"
 exit 1

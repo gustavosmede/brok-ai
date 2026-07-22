@@ -56,7 +56,7 @@ export async function recordedAudioToWav(blob: Blob): Promise<Blob> {
     const decoded = await context.decodeAudioData(await blob.arrayBuffer());
     const channels = Array.from({ length: decoded.numberOfChannels }, (_, index) => decoded.getChannelData(index));
     const samples = mixAndResampleAudio(channels, decoded.sampleRate);
-    if (!samples.length) throw new Error("A gravação não contém áudio");
+    if (!samples.length) throw new Error("The recording contains no audio");
     const wav = encodePcm16Wav(samples);
     const buffer = wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength) as ArrayBuffer;
     return new Blob([buffer], { type: "audio/wav" });

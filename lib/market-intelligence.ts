@@ -214,7 +214,7 @@ export async function getMarketIntelligence(holdings: Array<{ symbol: string; na
       connection: !configured ? "NOT_CONFIGURED" : fresh && !explicitlyClosed ? "DELAYED" : "OFFLINE",
       delayMinutes: 10,
       lastReceivedAt,
-      message: !configured ? "Adicione a chave gratuita para ativar o stream; fontes abertas e Yahoo continuam ativos." : fresh ? "Stream gratuito ativo com atraso de 10 minutos." : "Stream sem atualização recente; fontes abertas e Yahoo continuam ativos.",
+      message: !configured ? "Add the free key to enable the stream; open sources and Yahoo remain active." : fresh ? "Free stream active with a 10-minute delay." : "Stream has no recent update; open sources and Yahoo remain active.",
     },
     yahooFallback: yahooGroups.some((group) => group.length > 0),
   };

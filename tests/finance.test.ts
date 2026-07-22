@@ -47,7 +47,7 @@ test("resolves notional and percentage sizing without floating portfolio state",
   );
 });
 
-test("preserva precisão subcentavo para criptoativos como PEPE", () => {
+test("preserves sub-cent precision for crypto assets such as PEPE", () => {
   const priceCents = dollarsToPriceCents("0.00000284");
   const quantityMicros = resolveQuantityMicros({
     intent: { action: "BUY", symbol: "PEPE-USD", sizingType: "NOTIONAL", sizingValue: "100", orderType: "MARKET" },
@@ -63,9 +63,9 @@ test("preserva precisão subcentavo para criptoativos como PEPE", () => {
 });
 
 test("extracts an explicit percentage of available cash from natural language", () => {
-  assert.equal(cashPercentageFromText("compre 10% do caixa disponivel em petroleo"), 10);
-  assert.equal(cashPercentageFromText("invista 2,5% de caixa em Apple"), 2.5);
-  assert.equal(cashPercentageFromText("compre US$ 100 de Apple"), null);
+  assert.equal(cashPercentageFromText("buy 10% of available cash in oil"), 10);
+  assert.equal(cashPercentageFromText("buy 2.5% of cash in Apple"), 2.5);
+  assert.equal(cashPercentageFromText("buy US$ 100 of Apple"), null);
 });
 
 test("parses Brazilian and US formatted monetary values", () => {
