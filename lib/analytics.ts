@@ -261,7 +261,7 @@ export async function buildPortfolioAnalytics(state: DashboardState): Promise<Po
     if (quoteAgeMinutes === null || quoteAgeMinutes > 15) staleQuotes += 1;
     const openingSide = position.direction === "SHORT" ? "SELL" : "BUY";
     const firstEntry = [...state.fills].reverse().find((fill) => fill.symbol === position.symbol && fill.side === openingSide);
-    const costBasis = Math.round(Math.abs(position.quantityMicros) * position.averageCostCents / 1_000_000);
+    const costBasis = position.costBasisCents;
     return {
       symbol: position.symbol,
       dayPnlCents: previousClose ? Math.round(position.quantityMicros * (position.lastPriceCents - previousClose) / 1_000_000) : null,

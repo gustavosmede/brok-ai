@@ -139,7 +139,7 @@ export async function getPositionDetail(rawSymbol: string): Promise<PositionDeta
   const stopPriceCents = openStop?.trigger_price_cents ?? null;
   const targetPriceCents = openTarget?.trigger_price_cents ?? null;
   const risk = calculatePositionRisk({ quantityMicros: position.quantityMicros, direction: position.direction, lastPriceCents: position.lastPriceCents, stopPriceCents, targetPriceCents });
-  const costBasisCents = positionMarketValueCents(Math.abs(position.quantityMicros), position.averageCostCents);
+  const costBasisCents = position.costBasisCents;
   const previousCloseCents = historyResult.series?.previousCloseCents ?? null;
   const dayCents = previousCloseCents === null ? null : positionMarketValueCents(position.quantityMicros, position.lastPriceCents - previousCloseCents);
   const openedAt = findOpenCycleStart(fills);

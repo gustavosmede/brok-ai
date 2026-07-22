@@ -144,3 +144,17 @@ test("preserves Yahoo symbols for crypto, futures, currencies, and indices", () 
   assert.equal(COMPANY_SYMBOL_FALLBACKS.spx, "^GSPC");
   assert.equal(COMPANY_SYMBOL_FALLBACKS.chevron, "CVX");
 });
+
+
+test("calculates open short return from absolute signed cost basis", () => {
+  const short = buildPositions([
+    { side: "SELL", symbol: "UVXY", quantityMicros: 1_000_000, priceCents: 10_000, feeCents: 0, createdAt: "2026-01-01" },
+  ]).get("UVXY");
+  assert.ok(short);
+  const pnlAt90 = positionMarketValueCents(short.quantityMicros, 9_000) - short.costBasisCents;
+  const pnlAt110 = positionMarketValueCents(short.quantityMicros, 11_000) - short.costBasisCents;
+  assert.equal(pnlAt90, 1_000);
+  assert.equal(pnlAt110, -1_000);
+  assert.equal(pnlAt90 / Math.abs(short.costBasisCents) * 100, 10);
+  assert.equal(pnlAt110 / Math.abs(short.costBasisCents) * 100, -10);
+});

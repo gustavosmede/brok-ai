@@ -760,7 +760,7 @@ function PortfolioCommandBar({ state, activeTab, onNavigate }: { state: Dashboar
 }
 
 function PositionsTable({ state, analytics, activeTab, onNavigate, onReduce, onOpen }: { state: DashboardState; analytics: PortfolioAnalytics | null; activeTab: Tab; onNavigate: (tab: Tab) => void; onReduce: (symbol: string, pct: number) => void; onOpen: (symbol: string) => void }) {
-  const totalCostBasis = state.positions.reduce((total, position) => total + Math.round(Math.abs(position.quantityMicros) * position.averageCostCents / 1_000_000), 0);
+  const totalCostBasis = state.positions.reduce((total, position) => total + position.costBasisCents, 0);
   const totalUnrealized = state.positions.reduce((total, position) => total + position.unrealizedPnlCents, 0);
   const totalReturnPct = totalCostBasis > 0 ? totalUnrealized / totalCostBasis * 100 : 0;
   const largestPosition = state.positions.reduce<(typeof state.positions)[number] | null>((largest, position) => !largest || position.allocationPct > largest.allocationPct ? position : largest, null);
@@ -777,8 +777,7 @@ function PositionsTable({ state, analytics, activeTab, onNavigate, onReduce, onO
       <div><span>LARGEST POSITION</span><strong>{largestPosition?.symbol ?? '—'}</strong><small>{largestPosition ? `${largestPosition.allocationPct.toFixed(1)}% OF EQUITY` : 'NO EXPOSURE'}</small></div>
     </div>
     <div className="table-wrap"><table className="portfolio-table analytics-positions" aria-label="Open portfolio positions"><thead><tr><th>#</th><th>Security</th><th className="numeric">Quantity</th><th className="numeric">Avg Px</th><th className="numeric">Last Px</th><th className="numeric">Day P&amp;L</th><th className="numeric">Total P&amp;L</th><th className="numeric">Return</th><th className="numeric">Contrib.</th><th>Stop / Target</th><th>Weight</th><th className="numeric">Days</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{state.positions.map((position, index) => {
-      const costBasis = Math.round(Math.abs(position.quantityMicros) * position.averageCostCents / 1_000_000);
-      const returnPct = costBasis > 0 ? position.unrealizedPnlCents / costBasis * 100 : 0;
+      const returnPct = position.costBasisCents > 0 ? position.unrealizedPnlCents / position.costBasisCents * 100 : 0;
       const detail = analyticsBySymbol.get(position.symbol);
       return <tr key={position.symbol}>
         <td className="row-number">{String(index + 1).padStart(2, '0')}</td>

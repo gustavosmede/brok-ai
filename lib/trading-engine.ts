@@ -108,6 +108,7 @@ export type DashboardState = {
     direction: "LONG" | "SHORT";
     quantityMicros: number;
     averageCostCents: number;
+    costBasisCents: number;
     lastPriceCents: number;
     marketValueCents: number;
     unrealizedPnlCents: number;
@@ -526,12 +527,13 @@ async function computeState(db: D1Database, includeLists = true): Promise<Dashbo
     direction: position.quantityMicros < 0 ? "SHORT" as const : "LONG" as const,
     quantityMicros: position.quantityMicros,
     averageCostCents: position.averageCostCents,
+    costBasisCents: Math.abs(position.costBasisCents),
     lastPriceCents: lastPrice,
     marketValueCents: value,
     unrealizedPnlCents: pnl,
     realizedPnlCents: position.realizedPnlCents,
     allocationPct: equity > 0 ? (value / equity) * 100 : 0,
-    quoteSource: quote?.source ?? "CUSTO",
+    quoteSource: quote?.source ?? "COST",
     quoteObservedAt: quote?.observedAt ?? "",
     assetClass: quote?.assetClass ?? "OTHER",
     name: quote?.name ?? position.symbol,
