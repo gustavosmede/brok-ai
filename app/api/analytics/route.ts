@@ -6,6 +6,6 @@ export async function GET() {
     const state = await getDashboardState();
     return Response.json({ analytics: await buildPortfolioAnalytics(state) });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Falha ao calcular analytics" }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : "Failed to calculate analytics" }, { status: 500 });
   }
 }

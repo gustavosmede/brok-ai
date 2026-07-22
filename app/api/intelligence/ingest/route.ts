@@ -16,6 +16,6 @@ export async function POST(request: Request) {
     await ingestFinancialJuiceMessage(payload as Record<string, unknown>);
     return Response.json({ ok: true });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "Falha ao persistir evento" }, { status: 500 });
+    return Response.json({ error: error instanceof Error ? error.message : "Failed to persist event" }, { status: 500 });
   }
 }

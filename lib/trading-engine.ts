@@ -29,7 +29,7 @@ import {
   type SymbolResolution,
 } from "./market-data";
 import { getUsEquityMarketStatus } from "./market-calendar";
-import { backfillMissingPortfolioHistory } from "./portfolio-history";
+import { backfillMissingPortfolioHistory, reconstructRecentPortfolioPerformance } from "./portfolio-history";
 
 type OrderRow = {
   id: string;
@@ -123,6 +123,7 @@ export type DashboardState = {
   recentOrders: OrderRow[];
   fills: FillRow[];
   snapshots: Array<{ id: string; equity_cents: number; cash_cents: number; created_at: string; source: string; coverage_pct: number }>;
+  performanceSnapshots: Array<{ id: string; equity_cents: number; cash_cents: number; created_at: string; source: string; coverage_pct: number }>;
   audit: Array<{ id: string; event_type: string; message: string; created_at: string }>;
   corporateActions: Array<{ id: string; symbol: string; action_type: string; effective_date: string; value_text: string; status: string; created_at: string }>;
   lastQuoteAt: string | null;
@@ -537,6 +538,26 @@ async function computeState(db: D1Database, includeLists = true): Promise<Dashbo
     exchange: quote?.exchange ?? "",
   })).sort((a, b) => b.marketValueCents - a.marketValueCents);
   const lastQuoteAt = [...quotes.values()].map((quote) => quote.observedAt).sort().at(-1) ?? null;
+  let performanceSnapshots = snapshotResult.results ?? [];
+  if (includeLists) {
+    try {
+      performanceSnapshots = await reconstructRecentPortfolioPerformance(db);
+    } catch {
+      performanceSnapshots = snapshotResult.results ?? [];
+    }
+  }
+  const currentSnapshot = {
+    id: "live-now",
+    equity_cents: equity,
+    cash_cents: cash,
+    created_at: nowIso(),
+    source: "LIVE_NOW",
+    coverage_pct: rawPositions.length && rawPositions.some(({ quote }) => !quote) ? 0 : 100,
+  };
+  if (includeLists) {
+    performanceSnapshots = [...performanceSnapshots.filter((snapshot) => snapshot.id !== "live-now"), currentSnapshot]
+      .sort((left, right) => left.created_at.localeCompare(right.created_at));
+  }
   return {
     market: getUsEquityMarketStatus(),
     account: {
@@ -553,6 +574,7 @@ async function computeState(db: D1Database, includeLists = true): Promise<Dashbo
     recentOrders: includeLists ? recentOrderResult.results ?? [] : [],
     fills: includeLists ? fillRows.slice(-80).reverse() : [],
     snapshots: snapshotResult.results ?? [],
+    performanceSnapshots,
     audit: includeLists ? auditResult.results ?? [] : [],
     corporateActions: includeLists ? actionResult.results ?? [] : [],
     lastQuoteAt,
@@ -771,7 +793,7 @@ Retorne somente o objeto que respeita o schema.`;
         }),
         signal: AbortSignal.timeout(20_000),
       });
-      if (!response.ok) throw new Error(`Ollama respondeu ${response.status}`);
+      if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
       const payload = await response.json() as { message?: { content?: string } };
       previousContent = payload.message?.content?.trim() ?? "";
       if (!previousContent) {

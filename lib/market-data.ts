@@ -45,13 +45,13 @@ export async function fetchBinanceBars(
   end: number,
 ): Promise<BinancePriceBar[]> {
   const symbol = toBinanceSpotSymbol(rawSymbol);
-  if (!symbol) throw new Error(`Sem par spot Binance para ${rawSymbol}`);
+  if (!symbol) throw new Error(`No Binance spot pair for ${rawSymbol}`);
   const bars: BinancePriceBar[] = [];
   let cursor = Math.max(0, start);
   for (let page = 0; page < 25 && cursor <= end; page += 1) {
     const params = new URLSearchParams({ symbol, interval, startTime: String(cursor), endTime: String(end), limit: "1000" });
     const response = await fetch(`${BINANCE_MARKET_DATA_URL}/api/v3/klines?${params}`, { signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) throw new Error(`Binance respondeu ${response.status} para ${symbol}`);
+    if (!response.ok) throw new Error(`Binance returned ${response.status} for ${symbol}`);
     const pageBars = normalizeBinanceKlines(await response.json());
     if (!pageBars.length) break;
     bars.push(...pageBars);
@@ -160,7 +160,7 @@ export function selectYahooAssetMatch(query: string, quotes: YahooSearchQuote[])
 async function yahooSearch(query: string, count = 12): Promise<YahooSearchQuote[]> {
   const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=${count}&newsCount=0`;
   const response = await fetch(url, { headers: { "User-Agent": "Brok.ai/1.0 personal-research" }, signal: AbortSignal.timeout(8_000) });
-  if (!response.ok) throw new Error(`Yahoo Search respondeu ${response.status}`);
+  if (!response.ok) throw new Error(`Yahoo Search returned ${response.status}`);
   const payload = await response.json() as { quotes?: YahooSearchQuote[] };
   return payload.quotes ?? [];
 }
@@ -211,7 +211,7 @@ export async function resolveYahooAsset(rawQuery: string): Promise<AssetResoluti
       .filter((quote) => quote.symbol)
       .sort((a, b) => Number(assetClassOf(b) === "ETF") - Number(assetClassOf(a) === "ETF") || (b.score ?? 0) - (a.score ?? 0))
       .slice(0, 5)
-      .map((quote) => ({ ...toResolution(query, quote), reason: assetClassOf(quote) === "ETF" ? `ETF relacionado a ${query}` : `Asset relacionado a ${query}` }));
+      .map((quote) => ({ ...toResolution(query, quote), reason: assetClassOf(quote) === "ETF" ? `ETF related to ${query}` : `Asset related to ${query}` }));
     if (!preferred.length) throw new Error(`No asset or alternative found for ${query}`);
     return { resolution: null, suggestions: preferred, needsSelection: true };
   } catch (error) {
@@ -232,7 +232,7 @@ export class YahooMarketDataProvider implements MarketDataProvider {
       headers: { "User-Agent": "Brok.ai/1.0 personal-research" },
       signal: AbortSignal.timeout(8_000),
     });
-    if (!response.ok) throw new Error(`Yahoo respondeu ${response.status}`);
+    if (!response.ok) throw new Error(`Yahoo returned ${response.status}`);
     const payload = await response.json() as {
       chart?: {
         error?: { description?: string } | null;
@@ -268,11 +268,11 @@ export class BinanceMarketDataProvider implements MarketDataProvider {
     const pair = parseBinancePairInput(rawSymbol);
     const yahooSymbol = pair?.portfolioSymbol ?? normalizeSymbol(rawSymbol);
     const symbol = pair?.binanceSymbol ?? null;
-    if (!symbol) throw new Error(`Sem par spot Binance para ${yahooSymbol}`);
+    if (!symbol) throw new Error(`No Binance spot pair for ${yahooSymbol}`);
     const response = await fetch(`${BINANCE_MARKET_DATA_URL}/api/v3/ticker/price?symbol=${encodeURIComponent(symbol)}`, {
       signal: AbortSignal.timeout(8_000),
     });
-    if (!response.ok) throw new Error(`Binance respondeu ${response.status} para ${symbol}`);
+    if (!response.ok) throw new Error(`Binance returned ${response.status} for ${symbol}`);
     const payload = await response.json() as { price?: string };
     const price = Number(payload.price);
     if (!Number.isFinite(price) || price <= 0) throw new Error(`No Binance quote for ${symbol}`);
@@ -325,7 +325,7 @@ export class AlpacaMarketDataProvider implements MarketDataProvider {
       },
       signal: AbortSignal.timeout(8_000),
     });
-    if (!response.ok) throw new Error(`Alpaca respondeu ${response.status}`);
+    if (!response.ok) throw new Error(`Alpaca returned ${response.status}`);
     const payload = await response.json() as { quote?: { ap?: number; bp?: number; t?: string } };
     const ask = payload.quote?.ap;
     const bid = payload.quote?.bp;

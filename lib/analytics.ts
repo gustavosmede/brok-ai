@@ -138,7 +138,7 @@ export async function fetchYahooSeries(symbol: string, range: "1y" | "5y" = "1y"
     headers: { "User-Agent": "Brok.ai/1.0 personal-research" },
     signal: AbortSignal.timeout(8_000),
   });
-  if (!response.ok) throw new Error(`Yahoo respondeu ${response.status} para ${symbol}`);
+  if (!response.ok) throw new Error(`Yahoo returned ${response.status} for ${symbol}`);
   const payload = await response.json() as {
     chart?: { result?: Array<{ meta?: { previousClose?: number }; timestamp?: number[]; indicators?: { quote?: Array<{ close?: Array<number | null> }> } }> };
   };

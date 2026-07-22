@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       throw new Error("Local Whisper is not available. Run npm run voice:install and try again.", { cause: error });
     }
     const raw = await response.text();
-    if (!response.ok) throw new Error(`Whisper local respondeu ${response.status}: ${raw.slice(0, 160)}`);
+    if (!response.ok) throw new Error(`Local Whisper returned ${response.status}: ${raw.slice(0, 160)}`);
     let text = raw;
     try {
       const parsed = JSON.parse(raw) as { text?: string };

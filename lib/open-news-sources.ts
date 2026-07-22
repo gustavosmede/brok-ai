@@ -134,7 +134,7 @@ export async function fetchGdeltNews(): Promise<MarketNewsItem[]> {
   url.searchParams.set("sort", "HybridRel");
   url.searchParams.set("format", "json");
   const response = await fetch(url, { headers: { "User-Agent": "Brok.ai/1.0 market-intelligence" }, signal: AbortSignal.timeout(8_000) });
-  if (!response.ok) throw new Error(`GDELT respondeu ${response.status}`);
+  if (!response.ok) throw new Error(`GDELT returned ${response.status}`);
   const payload = await response.json() as { articles?: GdeltArticle[] };
   return (payload.articles ?? []).flatMap((article) => normalizeGdeltArticle(article) ?? []);
 }
@@ -142,7 +142,7 @@ export async function fetchGdeltNews(): Promise<MarketNewsItem[]> {
 async function fetchRssSource(feed: RssSource): Promise<MarketNewsItem[]> {
   const userAgent = feed.source === "SEC_EDGAR" ? "Brok.ai/1.0 local-market-research" : "Brok.ai/1.0 market-intelligence";
   const response = await fetch(feed.url, { headers: { "User-Agent": userAgent, Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" }, signal: AbortSignal.timeout(8_000) });
-  if (!response.ok) throw new Error(`${feed.source} respondeu ${response.status}`);
+  if (!response.ok) throw new Error(`${feed.source} returned ${response.status}`);
   return parseRssFeed(await response.text(), feed.source, feed.labels);
 }
 

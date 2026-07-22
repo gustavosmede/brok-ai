@@ -98,7 +98,7 @@ export async function fetchNasdaqEconomicCalendar(days = 7, now = new Date()): P
       headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0 Brok.ai/1.0 personal-research" },
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) throw new Error(`Nasdaq Calendar respondeu ${response.status}`);
+    if (!response.ok) throw new Error(`Nasdaq Calendar returned ${response.status}`);
     const payload = await response.json() as NasdaqResponse;
     return (payload.data?.rows ?? []).flatMap((row) => {
       const normalized = normalizeNasdaqEvent(date, row);

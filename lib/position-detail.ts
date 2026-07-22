@@ -98,7 +98,7 @@ export async function fetchYahooNews(symbol: string, name: string) {
   const query = symbol || name;
   const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=0&newsCount=12&enableFuzzyQuery=false`;
   const response = await fetch(url, { headers: { "User-Agent": "Brok.ai/1.0 personal-research" }, signal: AbortSignal.timeout(8_000) });
-  if (!response.ok) throw new Error(`Yahoo News respondeu ${response.status}`);
+  if (!response.ok) throw new Error(`Yahoo News returned ${response.status}`);
   const payload = await response.json() as { news?: Array<{ uuid?: string; title?: string; publisher?: string; link?: string; providerPublishTime?: number; relatedTickers?: string[] }> };
   const priorityPublishers = ["reuters", "bloomberg", "associated press", "cnbc", "financial times", "wall street journal", "wsj", "barrons", "marketwatch", "coindesk"];
   return (payload.news ?? []).flatMap((item, index) => {

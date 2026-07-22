@@ -182,7 +182,7 @@ function EquityChart({ points }: { points: DashboardState["snapshots"] }) {
           ctx.font = "8px Menlo, monospace";
           ctx.textAlign = "center";
           ctx.textBaseline = "top";
-          ctx.fillText("SEM DADOS", (gapStart + gapEnd) / 2, top + 8);
+          ctx.fillText("NO DATA", (gapStart + gapEnd) / 2, top + 8);
         }
       }
       const lastSegment = sourceSegments.at(-1)!;
@@ -259,7 +259,7 @@ export default function Home() {
       setState(body.state);
       void loadAnalytics();
     } catch (error) {
-      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Falha ao carregar" });
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Failed to load" });
     }
   }, [loadAnalytics]);
 
@@ -519,7 +519,7 @@ export default function Home() {
       const body = await api<{ state: DashboardState }>("/api/drafts/confirm", { method: "POST", body: JSON.stringify({ draftId: preview.draftId }) });
       setState(body.state); void loadAnalytics(); setPreview(null); setNotice({ kind: "success", text: "Order confirmada e registrada no paper broker." });
     } catch (error) {
-      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Falha ao confirmar" });
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Failed to confirm" });
     } finally { setBusy(false); }
   }
 
@@ -541,7 +541,7 @@ export default function Home() {
     try {
       const body = await api<{ state: DashboardState }>("/api/orders/cancel", { method: "POST", body: JSON.stringify({ orderId }) });
       setState(body.state); void loadAnalytics(); setNotice({ kind: "success", text: "Order cancelada." });
-    } catch (error) { setNotice({ kind: "error", text: error instanceof Error ? error.message : "Falha ao cancelar" }); }
+    } catch (error) { setNotice({ kind: "error", text: error instanceof Error ? error.message : "Failed to cancel" }); }
     finally { setBusy(false); }
   }
 
@@ -550,7 +550,7 @@ export default function Home() {
     try {
       const body = await api<{ state: DashboardState }>("/api/corporate-actions", { method: "POST", body: JSON.stringify(corp) });
       setState(body.state); void loadAnalytics(); setNotice({ kind: "success", text: "Event corporativo aplicado e auditado." });
-    } catch (error) { setNotice({ kind: "error", text: error instanceof Error ? error.message : "Falha no evento" }); }
+    } catch (error) { setNotice({ kind: "error", text: error instanceof Error ? error.message : "Failed to apply event" }); }
     finally { setBusy(false); }
   }
 
@@ -621,7 +621,7 @@ export default function Home() {
             </div>
             {analytics ? <div className="decision-strip"><button onClick={() => setTab('performance')}><span>Excess vs {analytics.benchmark}</span><strong className={(analytics.performance.excessReturnPct ?? 0) >= 0 ? 'positive' : 'negative'}>{percent(analytics.performance.excessReturnPct)}</strong></button><button onClick={() => setTab('performance')}><span>Current drawdown</span><strong className={analytics.performance.currentDrawdownPct < 0 ? 'negative' : ''}>{percent(analytics.performance.currentDrawdownPct)}</strong></button><button onClick={() => setTab('risk')}><span>Stop risk</span><strong>{money(analytics.risk.lossAtStopsCents)}</strong></button><button onClick={() => setTab('risk')}><span>Active alerts</span><strong className={analytics.alerts.some((alert) => alert.severity === 'HIGH') ? 'negative' : ''}>{analytics.alerts.length}</strong></button><div><span>Data health</span><strong className={analytics.health.yahoo === 'OK' && analytics.health.staleQuotes === 0 ? 'positive' : 'negative'}>{analytics.health.yahoo === 'OK' && analytics.health.staleQuotes === 0 ? 'Normal' : 'Attention'}</strong></div></div> : null}
             <div className="visual-grid">
-              <article className="panel equity-panel"><div className="panel-head"><div><p className="panel-kicker">PERFORMANCE</p><h2>Equity curve</h2></div><span className="period-chip">Since inception</span></div><div className="chart-summary"><strong>{money(state.account.equityCents)}</strong><span className={pnlTotal >= 0 ? "positive" : "negative"}>{pnlTotal >= 0 ? '+' : ''}{money(pnlTotal)}</span></div><EquityChart points={state.snapshots} /></article>
+              <article className="panel equity-panel"><div className="panel-head"><div><p className="panel-kicker">PERFORMANCE</p><h2>Equity curve</h2></div><span className="period-chip">Last 24h</span></div><div className="chart-summary"><strong>{money(state.account.equityCents)}</strong><span className={pnlTotal >= 0 ? "positive" : "negative"}>{pnlTotal >= 0 ? '+' : ''}{money(pnlTotal)}</span></div><EquityChart points={state.performanceSnapshots.length ? state.performanceSnapshots : state.snapshots} /></article>
               <article className="panel allocation-panel"><div className="panel-head"><div><p className="panel-kicker">RISK</p><h2>Allocation</h2></div></div><div className="allocation-body"><div className="donut" style={{ background: allocationBackground }}><div><strong>{state.account.exposurePct.toFixed(0)}%</strong><span>exposed</span></div></div><div className="legend">{state.positions.slice(0, 5).map((position, index) => <div key={position.symbol}><span className="legend-dot" style={{ background: colors[index % colors.length] }} /><strong>{position.symbol}</strong><em>{position.allocationPct.toFixed(1)}%</em></div>)}{!state.positions.length ? <p>No open positions</p> : null}</div></div></article>
             </div>
             <PositionsTable state={state} analytics={analytics} activeTab={tab} onNavigate={setTab} onReduce={reducePosition} onOpen={openPositionDetail} />
@@ -723,7 +723,7 @@ function PerformanceView({ state, analytics }: { state: DashboardState; analytic
       <MetricCard label={`Excess over ${analytics.benchmark}`} value={percent(performance.excessReturnPct)} detail={`${analytics.benchmark} ${percent(performance.benchmarkSinceStartPct)}`} tone={(performance.excessReturnPct ?? 0) >= 0 ? 'positive' : 'negative'} />
       <MetricCard label="Max drawdown" value={percent(performance.maxDrawdownPct)} detail={`Actual ${percent(performance.currentDrawdownPct)}`} tone={performance.maxDrawdownPct < 0 ? 'negative' : 'neutral'} />
     </div>
-    <article className="panel performance-chart-panel"><div className="panel-head"><div><p className="panel-kicker">BENCHMARK</p><h2>Cumulative return versus {analytics.benchmark}</h2></div><span className="period-chip">Since inception</span></div><ComparisonChart points={performance.series} benchmark={analytics.benchmark} /></article>
+    <article className="panel performance-chart-panel"><div className="panel-head"><div><p className="panel-kicker">BENCHMARK</p><h2>Cumulative return versus {analytics.benchmark}</h2></div><span className="period-chip">Last 24h</span></div><ComparisonChart points={performance.series} benchmark={analytics.benchmark} /></article>
     <div className="analytics-two-column">
       <article className="panel period-panel"><div className="panel-head"><div><p className="panel-kicker">WINDOWS</p><h2>Return by period</h2></div></div><dl className="analytics-list"><div><dt>Today</dt><dd className={(performance.returnTodayPct ?? 0) >= 0 ? 'positive' : 'negative'}>{percent(performance.returnTodayPct)}</dd></div><div><dt>7 days</dt><dd className={(performance.returnWeekPct ?? 0) >= 0 ? 'positive' : 'negative'}>{percent(performance.returnWeekPct)}</dd></div><div><dt>30 days</dt><dd className={(performance.returnMonthPct ?? 0) >= 0 ? 'positive' : 'negative'}>{percent(performance.returnMonthPct)}</dd></div><div><dt>Since inception</dt><dd className={performance.returnSinceStartPct >= 0 ? 'positive' : 'negative'}>{percent(performance.returnSinceStartPct)}</dd></div></dl></article>
       <article className="panel methodology-panel"><div className="panel-head"><div><p className="panel-kicker">QUALITY</p><h2>Metric reliability</h2></div><span className={`health-pill ${analytics.health.historyPoints >= 20 ? 'ok' : ''}`}>{analytics.health.historyPoints} points</span></div><p>{analytics.health.note}</p><ul><li>Returns use only actually recorded snapshots.</li><li>Benchmark uses daily SPY closes.</li><li>Periods without enough history are explicitly shown as unavailable.</li></ul></article>

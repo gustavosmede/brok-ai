@@ -88,7 +88,7 @@ export function reconstructPortfolioSnapshots(input: {
   });
 }
 
-type YahooInterval = "5m" | "30m" | "1h" | "1d";
+export type YahooInterval = "5m" | "30m" | "1h" | "1d";
 
 function intervalForGap(gapMs: number): YahooInterval {
   if (gapMs <= 7 * 86_400_000) return "5m";
@@ -97,7 +97,7 @@ function intervalForGap(gapMs: number): YahooInterval {
   return "1d";
 }
 
-function intervalMilliseconds(interval: YahooInterval): number {
+export function intervalMilliseconds(interval: YahooInterval): number {
   if (interval === "5m") return 5 * 60_000;
   if (interval === "30m") return 30 * 60_000;
   if (interval === "1h") return 60 * 60_000;
@@ -113,7 +113,7 @@ async function fetchYahooBars(symbol: string, start: number, end: number, interv
     headers: { "User-Agent": "Brok.ai/1.0 personal-research" },
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) throw new Error(`Yahoo respondeu ${response.status} para ${symbol}`);
+  if (!response.ok) throw new Error(`Yahoo returned ${response.status} for ${symbol}`);
   const payload = await response.json() as {
     chart?: { error?: { description?: string } | null; result?: Array<{ timestamp?: number[]; indicators?: { quote?: Array<{ close?: Array<number | null> }> } }> };
   };
@@ -128,10 +128,10 @@ async function fetchYahooBars(symbol: string, start: number, end: number, interv
   });
 }
 
-async function fetchMarketBars(symbol: string, start: number, end: number, interval: YahooInterval): Promise<HistoricalPriceBar[]> {
+export async function fetchMarketBars(symbol: string, start: number, end: number, interval: YahooInterval): Promise<HistoricalPriceBar[]> {
   if (toBinanceSpotSymbol(symbol)) {
     try {
-      const bars = await fetchBinanceBars(symbol, interval as BinanceInterval, start, end);
+      const bars = await fetchBinanceBars(symbol, interval as BinanceInterval, Math.max(0, start - intervalMilliseconds(interval) * 3), end);
       return bars.map((bar) => ({ symbol, ...bar, source: "BINANCE_BACKFILL" }));
     } catch {
       // Yahoo remains the automatic fallback for unsupported or unavailable Binance pairs.
@@ -144,6 +144,107 @@ async function batchRun(db: D1Database, statements: D1PreparedStatement[], size 
   for (let index = 0; index < statements.length; index += size) {
     await db.batch(statements.slice(index, index + size));
   }
+}
+
+
+let recentPerformanceCache: { expiresAt: number; value: ReconstructedPerformanceSnapshot[] } | null = null;
+
+export type ReconstructedPerformanceSnapshot = {
+  id: string;
+  equity_cents: number;
+  cash_cents: number;
+  created_at: string;
+  source: string;
+  coverage_pct: number;
+};
+
+export function makeTimeGrid(start: number, end: number, cadenceMs: number): string[] {
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(cadenceMs) || cadenceMs <= 0 || end <= start) return [];
+  const first = Math.ceil(start / cadenceMs) * cadenceMs;
+  const timestamps: string[] = [];
+  for (let timestamp = first; timestamp <= end; timestamp += cadenceMs) {
+    timestamps.push(new Date(timestamp).toISOString());
+  }
+  const now = new Date(end).toISOString();
+  if (!timestamps.length || timestamps.at(-1) !== now) timestamps.push(now);
+  return [...new Set(timestamps)];
+}
+
+export async function reconstructRecentPortfolioPerformance(
+  db: D1Database,
+  options: { now?: number; windowMs?: number; interval?: YahooInterval } = {},
+): Promise<ReconstructedPerformanceSnapshot[]> {
+  const now = options.now ?? Date.now();
+  if (!options.now && recentPerformanceCache && recentPerformanceCache.expiresAt > now) return recentPerformanceCache.value;
+  const windowMs = options.windowMs ?? 24 * 60 * 60_000;
+  const interval = options.interval ?? "5m";
+  const cadence = intervalMilliseconds(interval);
+  const start = now - windowMs;
+  const end = now;
+  const startIso = new Date(start).toISOString();
+  const endIso = new Date(end).toISOString();
+
+  const [symbolRows, fillRows, cashRows, quoteRows] = await Promise.all([
+    db.prepare("SELECT DISTINCT symbol FROM fills WHERE created_at <= ? ORDER BY symbol").bind(endIso).all<{ symbol: string }>(),
+    db.prepare("SELECT symbol, side, quantity_micros, price_cents, fee_cents, created_at FROM fills WHERE created_at <= ? ORDER BY created_at ASC, id ASC").bind(endIso).all<{ symbol: string; side: "BUY" | "SELL"; quantity_micros: number; price_cents: number; fee_cents: number; created_at: string }>(),
+    db.prepare("SELECT delta_cents, created_at FROM cash_ledger WHERE created_at <= ? ORDER BY created_at ASC").bind(endIso).all<{ delta_cents: number; created_at: string }>(),
+    db.prepare("SELECT symbol, price_cents, observed_at, source FROM quotes WHERE observed_at <= ?").bind(endIso).all<{ symbol: string; price_cents: number; observed_at: string; source: string }>(),
+  ]);
+
+  const symbols = (symbolRows.results ?? []).map((row) => row.symbol);
+  const timestamps = makeTimeGrid(start, end, cadence);
+  if (!timestamps.length) return [];
+
+  let bars: HistoricalPriceBar[] = [];
+  if (symbols.length) {
+    const historyStart = Math.max(0, start - 7 * 86_400_000);
+    const results = await Promise.allSettled(symbols.map((symbol) => fetchMarketBars(symbol, historyStart, end, interval)));
+    bars = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+  }
+
+  bars.push(...(quoteRows.results ?? []).map((quote) => ({
+    symbol: quote.symbol,
+    observedAt: quote.observed_at,
+    priceCents: quote.price_cents,
+    source: quote.source || "LIVE_QUOTE",
+  })));
+
+  const reconstructed = reconstructPortfolioSnapshots({
+    timestamps,
+    fills: (fillRows.results ?? []).map((row) => ({ symbol: row.symbol, side: row.side, quantityMicros: row.quantity_micros, priceCents: row.price_cents, feeCents: row.fee_cents, createdAt: row.created_at })),
+    cashEntries: (cashRows.results ?? []).map((row) => ({ deltaCents: row.delta_cents, createdAt: row.created_at })),
+    bars,
+  });
+
+  const byTimestamp = new Map(reconstructed.map((snapshot) => [snapshot.createdAt, snapshot]));
+  const persisted = await db.prepare("SELECT s.id, s.equity_cents, s.cash_cents, s.created_at, COALESCE(m.source, 'LIVE') AS source, COALESCE(m.coverage_pct, 100) AS coverage_pct FROM portfolio_snapshots s LEFT JOIN snapshot_metadata m ON m.snapshot_id = s.id WHERE s.created_at >= ? AND s.created_at <= ? ORDER BY s.created_at ASC")
+    .bind(startIso, endIso).all<ReconstructedPerformanceSnapshot>();
+
+  for (const snapshot of persisted.results ?? []) {
+    if (!byTimestamp.has(snapshot.created_at)) {
+      byTimestamp.set(snapshot.created_at, {
+        createdAt: snapshot.created_at,
+        cashCents: snapshot.cash_cents,
+        equityCents: snapshot.equity_cents,
+        realizedPnlCents: 0,
+        unrealizedPnlCents: 0,
+        coveragePct: snapshot.coverage_pct,
+      });
+    }
+  }
+
+  const performance = [...byTimestamp.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([createdAt, snapshot]) => ({
+      id: `perf-24h-${Date.parse(createdAt)}`,
+      equity_cents: snapshot.equityCents,
+      cash_cents: snapshot.cashCents,
+      created_at: createdAt,
+      source: "RECONSTRUCTED_24H",
+      coverage_pct: snapshot.coveragePct,
+    }));
+  if (!options.now) recentPerformanceCache = { expiresAt: now + 60_000, value: performance };
+  return performance;
 }
 
 export async function backfillMissingPortfolioHistory(db: D1Database): Promise<{ inserted: number; error?: string }> {
