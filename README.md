@@ -4,7 +4,7 @@ Brok.ai is a local-first paper trading terminal for simulated orders, positions,
 
 Primary creator: **Gustavo S. M.** (`gustavosmede`).
 
-For architecture, financial rules, integrations, APIs, limitations, and AI-agent guidance, read the [Brok.ai Technical Memo](./BROKAI_TECHNICAL_MEMO.md). For the business model, multibroker strategy, monetization, and global expansion thesis, read the [Brok.ai Business Memo](./BROKAI_BUSINESS_MEMO.md).
+For architecture, financial rules, integrations, APIs, limitations, and AI-agent guidance, read the [Brok.ai Technical Memo](./BROKAI_TECHNICAL_MEMO.md).
 
 ## Disclaimer
 
