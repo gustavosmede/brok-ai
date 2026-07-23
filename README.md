@@ -1,5 +1,8 @@
 # Brok.ai
 
+<img width="110" height="96" alt="image" src="https://github.com/user-attachments/assets/e65828a9-de16-4aec-9f86-16d8a5ee6426" />
+
+
 Brok.ai is a local-first paper trading terminal for simulated orders, positions, risk, news, and portfolio P&L. Financial records stay in the local D1/SQLite database, and the current MVP does not send real broker orders.
 
 Primary creator: **Gustavo S. M.** (`gustavosmede`).
@@ -114,3 +117,12 @@ npm test
 ## License
 
 Apache-2.0. See [LICENSE](./LICENSE).
+
+<img width="3008" height="1706" alt="image" src="https://github.com/user-attachments/assets/a7a80ebe-98ee-44a8-adae-3ae1a3d4380a" />
+<img width="3010" height="1568" alt="image" src="https://github.com/user-attachments/assets/1994bbce-5722-477f-95a1-9e0136857676" />
+<img width="3020" height="1716" alt="image" src="https://github.com/user-attachments/assets/323c5181-8393-4b3f-957f-af8319f218ff" />
+<img width="3024" height="1708" alt="image" src="https://github.com/user-attachments/assets/4318d647-236c-4fab-b47f-735382434032" />
+
+
+
+
